@@ -75,14 +75,40 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
   }, [videoId, onReady, onEnd]);
 
   useImperativeHandle(ref, () => ({
-    play: () => playerRef.current?.playVideo(),
-    pause: () => playerRef.current?.pauseVideo(),
-    seekTo: (seconds: number) => playerRef.current?.seekTo(seconds, true),
-    getCurrentTime: () => playerRef.current?.getCurrentTime() || 0,
-    getDuration: () => playerRef.current?.getDuration() || 0,
+    play: () => {
+      if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+        playerRef.current.playVideo();
+      }
+    },
+    pause: () => {
+      if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+        playerRef.current.pauseVideo();
+      }
+    },
+    seekTo: (seconds: number) => {
+      if (playerRef.current && typeof playerRef.current.seekTo === 'function') {
+        playerRef.current.seekTo(seconds, true);
+      }
+    },
+    getCurrentTime: () => {
+      if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
+        return playerRef.current.getCurrentTime();
+      }
+      return 0;
+    },
+    getDuration: () => {
+      if (playerRef.current && typeof playerRef.current.getDuration === 'function') {
+        return playerRef.current.getDuration();
+      }
+      return 0;
+    },
   }));
 
-  return <div ref={containerRef} className="absolute opacity-0 pointer-events-none" />;
+  return (
+    <div className="absolute opacity-0 pointer-events-none">
+      <div ref={containerRef} />
+    </div>
+  );
 });
 
 export default YouTubePlayer;
