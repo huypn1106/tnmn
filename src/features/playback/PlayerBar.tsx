@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../app/firebase';
@@ -38,7 +38,7 @@ export default function PlayerBar() {
   // Dynamic Accent
   useColorThief((playbackState as any)?.thumbnail);
 
-  const handleTrackEnd = () => {
+  const handleTrackEnd = useCallback(() => {
     if (!isDJ || !playbackState || queue.length === 0) return;
 
     // Find current track index
@@ -58,7 +58,7 @@ export default function PlayerBar() {
     } else {
       emitPlayback({ playing: false });
     }
-  };
+  }, [isDJ, playbackState, queue, emitPlayback]);
 
   // Scrubber local update loop
   useEffect(() => {
@@ -70,13 +70,13 @@ export default function PlayerBar() {
     return () => clearInterval(interval);
   }, [player, isDragging]);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     if (!playbackState) return;
     emitPlayback({ 
       playing: !playbackState.playing,
       position: player?.getCurrentTime() || 0 
     });
-  };
+  }, [playbackState, emitPlayback, player]);
 
   const handleSeekStart = () => setIsDragging(true);
   const handleSeekEnd = (e: React.MouseEvent<HTMLInputElement>) => {
