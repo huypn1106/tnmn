@@ -1,15 +1,13 @@
 import { useParams } from 'react-router-dom';
 import { useQueue } from '../queue/useQueue';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import AddTrackModal from '../queue/AddTrackModal';
 import { usePlaybackSync } from '../playback/usePlaybackSync';
 import WaveformBars from '../playback/WaveformBars';
 
-import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
-import { db, rtdb } from '../../app/firebase';
+import { rtdb } from '../../app/firebase';
 import { ref, update } from 'firebase/database';
 import { useAuth } from '../auth/useAuth';
-import type { Server } from './useServers';
 import ServerSettingsModal from './ServerSettingsModal';
 import { useServer } from './useServer';
 

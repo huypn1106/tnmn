@@ -1,11 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../../app/firebase';
 import { useAuth } from '../auth/useAuth';
 import YouTubePlayer from './YouTubePlayer';
 import type { PlayerHandle } from './YouTubePlayer';
-import type { Server } from '../servers/useServers';
 import SoundCloudPlayer from './SoundCloudPlayer';
 import { usePlaybackSync } from './usePlaybackSync';
 import { useColorThief } from '../../shared/hooks/useColorThief';
