@@ -22,11 +22,11 @@ export default function InvitePage() {
           setError('Invalid or expired invite link.');
         } else {
           const serverDoc = snap.docs[0];
-          const serverData = { id: serverDoc.id, ...serverDoc.data() };
+          const serverData: any = { id: serverDoc.id, ...serverDoc.data() };
           setServer(serverData);
           
           // If already a member, just redirect
-          if (user && (serverData as any).members.includes(user.uid)) {
+          if (user && serverData.members.includes(user.uid)) {
             navigate(`/server/${serverData.slug || serverData.id}`);
           }
         }
