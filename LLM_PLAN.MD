@@ -1,4 +1,4 @@
-### Phase 6 — LLM Playlist + Track Recommendations (Week 11–12)
+### Phase 6 — LLM Playlist + Track Recommendations (Updated: 2026-05-05 17:15)
  
 > Uses the **NVIDIA NIM API** free tier — `meta/llama-3.3-70b-instruct` model.
 > Free tier provides 1,000 API credits/month (each request costs 1 credit).
