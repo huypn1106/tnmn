@@ -6,15 +6,29 @@ import FriendsList from '../friends/FriendsList';
 import { useAuth } from '../auth/useAuth';
 import CreateServerModal from './CreateServerModal';
 
-export default function ServerList() {
+interface ServerListProps {
+  onCloseMobile?: () => void;
+}
+
+export default function ServerList({ onCloseMobile }: ServerListProps) {
   const { servers, loading } = useServers();
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
-    <div className="flex h-full flex-col p-4 overflow-y-auto custom-scrollbar">
+    <div className="flex h-full w-full flex-col p-4 overflow-y-auto custom-scrollbar">
       <div className="mb-8 flex items-center justify-between">
-        <h2 className="font-mono text-xs uppercase tracking-widest text-text-3">Servers</h2>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={onCloseMobile}
+            className="text-text-3 hover:text-white md:hidden"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <h2 className="font-mono text-xs uppercase tracking-widest text-text-3">Servers</h2>
+        </div>
         <button 
           onClick={() => setIsModalOpen(true)}
           className="text-text-3 transition-colors hover:text-accent"

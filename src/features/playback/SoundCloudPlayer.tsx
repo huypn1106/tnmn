@@ -17,6 +17,8 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const widgetRef = useRef<any>(null);
   const [isReady, setIsReady] = useState(false);
+  const currentTimeRef = useRef(0);
+  const durationRef = useRef(0);
 
   const onReadyRef = useRef(onReady);
   const onEndRef = useRef(onEnd);
@@ -42,7 +44,16 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
       widgetRef.current = window.SC.Widget(iframeRef.current);
       widgetRef.current.bind(window.SC.Widget.Events.READY, () => {
         setIsReady(true);
+        widgetRef.current.getDuration((dur: number) => {
+          durationRef.current = dur / 1000;
+        });
         onReadyRef.current?.();
+      });
+      widgetRef.current.bind(window.SC.Widget.Events.PLAY_PROGRESS, (data: any) => {
+        currentTimeRef.current = data.currentPosition / 1000;
+      });
+      widgetRef.current.bind(window.SC.Widget.Events.SEEK, (data: any) => {
+        currentTimeRef.current = data.currentPosition / 1000;
       });
       widgetRef.current.bind(window.SC.Widget.Events.FINISH, () => {
         onEndRef.current?.();
@@ -66,15 +77,13 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
     play: () => widgetRef.current?.play(),
     pause: () => widgetRef.current?.pause(),
     seekTo: (seconds: number) => widgetRef.current?.seekTo(seconds * 1000),
-    getCurrentTime: () => {
-      let time = 0;
-      widgetRef.current?.getPosition((pos: number) => { time = pos / 1000; });
-      return time;
+    getCurrentTime: () => currentTimeRef.current,
+    getDuration: () => durationRef.current,
+    setMuted: (muted: boolean) => {
+      widgetRef.current?.setVolume(muted ? 0 : 100);
     },
-    getDuration: () => {
-      let dur = 0;
-      widgetRef.current?.getDuration((d: number) => { dur = d / 1000; });
-      return dur;
+    setVolume: (volume: number) => {
+      widgetRef.current?.setVolume(volume);
     },
   }), [isReady]);
 

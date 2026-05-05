@@ -17,6 +17,13 @@ export default function PlayerBar() {
   const [player, setPlayer] = useState<PlayerHandle | null>(null);
   const [localTime, setLocalTime] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => {
+    return localStorage.getItem('tnmn_muted') === 'true';
+  });
+  const [volume, setVolume] = useState(() => {
+    const saved = localStorage.getItem('tnmn_volume');
+    return saved !== null ? parseInt(saved, 10) : 100;
+  });
   
   const isDJ = !!user && !!server && server.roles?.[user.uid] === 'dj';
   const { queue } = useQueue(resolvedId || undefined);
@@ -121,6 +128,18 @@ export default function PlayerBar() {
     }, 1000);
     return () => clearInterval(interval);
   }, [player, isDragging]);
+  
+  useEffect(() => {
+    if (isMuted) {
+      player?.setMuted(true);
+      player?.setVolume(0);
+    } else {
+      player?.setMuted(false);
+      player?.setVolume(volume);
+    }
+    localStorage.setItem('tnmn_muted', isMuted.toString());
+    localStorage.setItem('tnmn_volume', volume.toString());
+  }, [player, isMuted, volume]);
 
   const togglePlay = useCallback(() => {
     if (!playbackState) return;
@@ -154,7 +173,7 @@ export default function PlayerBar() {
   }
 
   return (
-    <div className="flex h-full items-center gap-4 px-4">
+    <div className="flex min-h-full md:h-full flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4 px-4 py-3 md:py-0">
       {/* Hidden Players */}
       {playbackState.source === 'youtube' && (
         <YouTubePlayer 
@@ -172,27 +191,29 @@ export default function PlayerBar() {
       )}
 
       {/* Info */}
-      <div className="flex items-center gap-3 w-64 shrink-0 overflow-hidden">
-        <div className="h-10 w-10 bg-bg-3 shrink-0 overflow-hidden border border-rule/50">
+      <div className="flex items-center gap-3 w-full md:w-64 shrink-0 overflow-hidden">
+        <div className="h-8 w-8 md:h-10 md:w-10 bg-bg-3 shrink-0 overflow-hidden border border-rule/50">
            {(playbackState as any).thumbnail ? (
              <img src={(playbackState as any).thumbnail} alt="" className="h-full w-full object-cover animate-in fade-in duration-500" />
            ) : (
              <div className="w-full h-full bg-accent opacity-20" />
            )}
         </div>
-        <div className="truncate">
-          <div className="flex items-center gap-2 mb-0.5">
-            <p className="truncate font-serif text-sm italic text-text leading-tight">{(playbackState as any).title || 'Now Playing'}</p>
-            <WaveformBars isPlaying={playbackState.playing} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="font-serif text-xs md:text-sm italic text-text leading-tight break-words line-clamp-2 md:line-clamp-none">{(playbackState as any).title || 'Now Playing'}</p>
+            <div className="hidden md:block">
+              <WaveformBars isPlaying={playbackState.playing} />
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <p className="font-mono text-[8px] uppercase text-text-3 tracking-tighter">Broadcasting via {playbackState.source}</p>
+            <p className="font-mono text-[8px] uppercase text-text-3 tracking-tighter truncate max-w-[80px] md:max-w-none">Broadcasting via {playbackState.source}</p>
             {playbackState.playing && (
               <button 
                 onClick={() => player?.play()}
-                className="font-mono text-[8px] uppercase text-accent hover:underline animate-pulse"
+                className="font-mono text-[8px] uppercase text-accent hover:underline animate-pulse shrink-0"
               >
-                • Sync Audio
+                • Sync
               </button>
             )}
           </div>
@@ -200,8 +221,8 @@ export default function PlayerBar() {
       </div>
 
       {/* Controls */}
-      <div className="flex flex-1 flex-col gap-1 px-4">
-        <div className="flex items-center justify-center gap-6">
+      <div className="flex flex-1 flex-col justify-center gap-0.5 md:gap-1 px-0 md:px-4">
+        <div className="flex items-center justify-center gap-3 md:gap-6">
           {isDJ && (
             <button 
               onClick={toggleShuffle}
@@ -258,27 +279,56 @@ export default function PlayerBar() {
           )}
         </div>
         
-        {/* Scrubber */}
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] text-text-3 w-8 text-right">{formatTime(localTime)}</span>
-          <input 
-            type="range"
-            min={0}
-            max={player?.getDuration() || 100}
-            step={0.1}
-            disabled={!isDJ}
-            value={isDragging ? undefined : localTime}
-            onMouseDown={handleSeekStart}
-            onChange={(e) => setLocalTime(parseFloat(e.target.value))}
-            onMouseUp={handleSeekEnd}
-            className="flex-1 h-0.5 appearance-none bg-rule outline-none accent-accent cursor-pointer disabled:cursor-default"
-          />
-          <span className="font-mono text-[10px] text-text-3 w-8">{formatTime(player?.getDuration() || 0)}</span>
+        {/* Scrubber & Volume */}
+        <div className="flex items-center justify-center gap-3 md:gap-8">
+          <div className="flex items-center gap-3 w-full max-w-md">
+            <span className="font-mono text-[10px] text-text-3 w-8 text-right">{formatTime(localTime)}</span>
+            <input 
+              type="range"
+              min={0}
+              max={player?.getDuration() || 100}
+              step={0.1}
+              disabled={!isDJ}
+              value={isDragging ? undefined : localTime}
+              onMouseDown={handleSeekStart}
+              onChange={(e) => setLocalTime(parseFloat(e.target.value))}
+              onMouseUp={handleSeekEnd}
+              className="flex-1 h-0.5 appearance-none bg-rule outline-none accent-accent cursor-pointer disabled:cursor-default"
+            />
+            <span className="font-mono text-[10px] text-text-3 w-8">{formatTime(player?.getDuration() || 0)}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setIsMuted(!isMuted)}
+              className="text-text-3 hover:text-text transition-all"
+              title={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted || volume === 0 ? (
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+              ) : (
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+              )}
+            </button>
+            <input 
+              type="range"
+              min={0}
+              max={100}
+              value={isMuted ? 0 : volume}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                setVolume(val);
+                if (val > 0) setIsMuted(false);
+                else setIsMuted(true);
+              }}
+              className="w-16 md:w-24 h-0.5 appearance-none bg-rule outline-none accent-accent cursor-pointer"
+            />
+          </div>
         </div>
       </div>
 
       {/* DJ Badge */}
-      <div className="w-32 flex justify-end">
+      <div className="hidden md:flex w-32 justify-end">
         {isDJ ? (
           <span className="border border-accent px-2 py-0.5 font-mono text-[8px] uppercase text-accent tracking-widest">Master DJ</span>
         ) : (

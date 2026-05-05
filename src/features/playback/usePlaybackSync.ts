@@ -73,12 +73,15 @@ export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, pla
     if (!serverId || !isDJ) return;
     
     const now = Date.now();
-    // Simple throttle for manual seeks/updates
     if (now - lastUpdateRef.current < 200) return;
     lastUpdateRef.current = now;
 
+    // Use current position if not provided, fallback to current state or 0
+    const currentPos = patch.position ?? player?.getCurrentTime() ?? playbackState?.position ?? 0;
+
     update(ref(rtdb, `playback/${serverId}`), {
       ...patch,
+      position: currentPos,
       updatedAt: now,
       djId: user?.uid,
     });

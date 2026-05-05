@@ -63,14 +63,20 @@ export default function ServerView() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-rule p-8">
+      <header className="flex items-center justify-between border-b border-rule p-4 md:p-8">
         <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h2 className="font-serif text-3xl italic tracking-tight">{server?.name || 'Queue'}</h2>
+          <h2 className="font-serif text-3xl italic tracking-tight leading-none">{server?.name || 'Queue'}</h2>
+          <p className="font-mono text-[9px] uppercase tracking-widest text-text-3">
+            {server?.slug ? `/server/${server.slug}` : 'Session Dynamics'}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-1 border-r border-rule pr-2 md:gap-2 md:pr-4">
             {isOwner && (
               <button 
                 onClick={() => setIsSettingsOpen(true)}
-                className="text-text-3 transition-colors hover:text-accent"
+                className="flex h-10 w-10 items-center justify-center text-text-3 transition-all hover:bg-bg-3 hover:text-accent"
                 title="Server Settings"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -79,7 +85,7 @@ export default function ServerView() {
                 </svg>
               </button>
             )}
-            <div className="relative">
+            <div className="relative flex items-center">
               <button 
                 onClick={() => {
                   const url = `${window.location.origin}/invite/${server?.inviteToken}`;
@@ -87,7 +93,7 @@ export default function ServerView() {
                   setShowCopied(true);
                   setTimeout(() => setShowCopied(false), 2000);
                 }}
-                className="text-text-3 transition-colors hover:text-accent"
+                className="flex h-10 w-10 items-center justify-center text-text-3 transition-all hover:bg-bg-3 hover:text-accent"
                 title="Copy Invite Link"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -95,7 +101,7 @@ export default function ServerView() {
                 </svg>
               </button>
               {showCopied && (
-                <div className="absolute left-1/2 top-full mt-2 -translate-x-1/2 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="absolute left-1/2 top-full mt-2 -translate-x-1/2 animate-in fade-in slide-in-from-top-1 duration-200 z-50">
                   <div className="whitespace-nowrap bg-accent px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white shadow-xl">
                     Link Copied
                   </div>
@@ -103,21 +109,20 @@ export default function ServerView() {
               )}
             </div>
           </div>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-text-3">
-            {server?.slug ? `/server/${server.slug}` : 'Session Dynamics'}
-          </p>
+
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="group relative border border-rule bg-bg-2 px-4 py-2 md:px-6 md:py-3 font-mono text-[10px] uppercase tracking-widest text-text transition-all hover:bg-bg-3"
+          >
+            <span className="hidden md:inline">Add Track</span>
+            <span className="md:hidden">+ Track</span>
+            <div className="absolute inset-x-0 -bottom-px h-px bg-accent opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
         </div>
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="group relative border border-rule bg-bg-2 px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-text transition-all hover:bg-bg-3"
-        >
-          Add Track
-          <div className="absolute inset-x-0 -bottom-px h-px bg-accent opacity-0 transition-opacity group-hover:opacity-100" />
-        </button>
       </header>
 
       {/* Queue List */}
-      <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
         {loading ? (
           <div className="animate-pulse space-y-4">
              {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-16 w-full bg-bg-3 opacity-50" />)}
@@ -140,11 +145,11 @@ export default function ServerView() {
                   <div 
                     key={item.id}
                     onClick={() => playTrack(item)}
-                    className={`group relative flex flex-col md:flex-row items-center gap-8 border border-rule bg-bg-2 p-6 transition-all 
+                    className={`group relative flex flex-col md:flex-row items-center gap-6 md:gap-8 border border-rule bg-bg-2 p-4 md:p-6 transition-all 
                       ${isDJ ? 'cursor-pointer hover:bg-bg-3' : 'cursor-default'}
                     `}
                   >
-                    <div className="relative h-48 w-full md:w-48 shrink-0 bg-bg-3 overflow-hidden shadow-2xl">
+                    <div className="relative h-40 md:h-48 w-full md:w-48 shrink-0 bg-bg-3 overflow-hidden shadow-2xl">
                       <img src={item.thumbnail} alt="" className="h-full w-full object-cover animate-in fade-in zoom-in-95 duration-1000" />
                       <div className="absolute inset-0 flex items-center justify-center bg-bg/40 backdrop-blur-[2px]">
                         <WaveformBars isPlaying={playbackState?.playing || false} />
@@ -154,7 +159,7 @@ export default function ServerView() {
                     <div className="flex-1 space-y-4 text-center md:text-left overflow-hidden">
                       <div className="space-y-1">
                         <p className="font-mono text-[10px] uppercase tracking-widest text-accent">Currently Broadcasting</p>
-                        <h4 className="font-serif text-4xl italic tracking-tight text-text leading-tight truncate">{item.title}</h4>
+                        <h4 className="font-serif text-2xl md:text-4xl italic tracking-tight text-text leading-tight break-words">{item.title}</h4>
                       </div>
                       <div className="flex items-center justify-center md:justify-start gap-4">
                         <span className="font-mono text-[10px] uppercase px-2 py-1 border border-rule/50 text-text-3">{item.source}</span>
