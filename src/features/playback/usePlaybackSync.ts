@@ -19,7 +19,7 @@ export interface PlaybackState {
   loop?: 'off' | 'one' | 'all';
 }
 
-export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, player: PlayerHandle | null) {
+export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, player: PlayerHandle | null, hasInteracted: boolean) {
   const { user } = useAuth();
   const [playbackState, setPlaybackState] = useState<PlaybackState | null>(null);
   const lastUpdateRef = useRef(0);
@@ -66,7 +66,7 @@ export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, pla
     });
 
     return () => unsubscribe();
-  }, [serverId, isDJ, player]);
+  }, [serverId, isDJ, player, hasInteracted]);
 
   // DJ control function
   const emitPlayback = (patch: Partial<PlaybackState>) => {

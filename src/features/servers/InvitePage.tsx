@@ -41,6 +41,12 @@ export default function InvitePage() {
     if (!authLoading) fetchInvite();
   }, [token, user, authLoading, navigate]);
 
+  useEffect(() => {
+    if (server?.name) {
+      document.title = `Join ${server.name} — Listen Together`;
+    }
+  }, [server?.name]);
+
   const handleJoin = async () => {
     if (!user || !server) return;
     setLoading(true);

@@ -25,9 +25,23 @@ export default function PlayerBar() {
     return saved !== null ? parseInt(saved, 10) : 100;
   });
   
+  const [hasInteracted, setHasInteracted] = useState(() => {
+    // Check if user has already interacted with the document
+    return (navigator as any).userActivation?.hasBeenActive || false;
+  });
   const isDJ = !!user && !!server && server.roles?.[user.uid] === 'dj';
   const { queue } = useQueue(resolvedId || undefined);
-  const { playbackState, emitPlayback } = usePlaybackSync(resolvedId || undefined, isDJ, player);
+  const { playbackState, emitPlayback } = usePlaybackSync(resolvedId || undefined, isDJ, player, hasInteracted);
+
+  useEffect(() => {
+    const handleInteraction = () => setHasInteracted(true);
+    window.addEventListener('mousedown', handleInteraction);
+    window.addEventListener('keydown', handleInteraction);
+    return () => {
+      window.removeEventListener('mousedown', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+    };
+  }, []);
 
   // Dynamic Accent
   useColorThief((playbackState as any)?.thumbnail);
@@ -173,7 +187,20 @@ export default function PlayerBar() {
   }
 
   return (
-    <div className="flex min-h-full md:h-full flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4 px-4 py-3 md:py-0">
+    <div className="relative flex min-h-full md:h-full flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4 px-4 py-3 md:py-0">
+      {/* Autoplay Overlay */}
+      {playbackState.playing && !hasInteracted && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg-2/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <button 
+            onClick={() => setHasInteracted(true)}
+            className="flex items-center gap-3 bg-accent px-6 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-white shadow-2xl hover:scale-105 transition-transform active:scale-95"
+          >
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            Join Broadcast
+          </button>
+        </div>
+      )}
+
       {/* Hidden Players */}
       {playbackState.source === 'youtube' && (
         <YouTubePlayer 
@@ -191,7 +218,7 @@ export default function PlayerBar() {
       )}
 
       {/* Info */}
-      <div className="flex items-center gap-3 w-full md:w-64 shrink-0 overflow-hidden">
+      <div className="flex items-center gap-3 w-full md:flex-1 md:min-w-0 overflow-hidden">
         <div className="h-8 w-8 md:h-10 md:w-10 bg-bg-3 shrink-0 overflow-hidden border border-rule/50">
            {(playbackState as any).thumbnail ? (
              <img src={(playbackState as any).thumbnail} alt="" className="h-full w-full object-cover animate-in fade-in duration-500" />
@@ -201,8 +228,8 @@ export default function PlayerBar() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="font-serif text-xs md:text-sm italic text-text leading-tight break-words line-clamp-2 md:line-clamp-none">{(playbackState as any).title || 'Now Playing'}</p>
-            <div className="hidden md:block">
+            <p className="font-serif text-xs md:text-sm italic text-text leading-tight break-words line-clamp-2 md:line-clamp-1 md:truncate">{(playbackState as any).title || 'Now Playing'}</p>
+            <div className="hidden md:block shrink-0">
               <WaveformBars isPlaying={playbackState.playing} />
             </div>
           </div>
@@ -328,7 +355,7 @@ export default function PlayerBar() {
       </div>
 
       {/* DJ Badge */}
-      <div className="hidden md:flex w-32 justify-end">
+      <div className="hidden md:flex md:flex-1 justify-end">
         {isDJ ? (
           <span className="border border-accent px-2 py-0.5 font-mono text-[8px] uppercase text-accent tracking-widest">Master DJ</span>
         ) : (

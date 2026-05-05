@@ -35,7 +35,18 @@ export default function ServerView() {
   const { queue, loading: queueLoading, removeItem } = useQueue(resolvedId || undefined);
   const isDJ = !!user && !!server && server.roles?.[user.uid] === 'dj';
   const isOwner = !!user && !!server && server.ownerId === user.uid;
-  const { playbackState } = usePlaybackSync(resolvedId || undefined, isDJ, null);
+  const { playbackState } = usePlaybackSync(resolvedId || undefined, isDJ, null, true);
+
+  useEffect(() => {
+    if (server?.name) {
+      const songPrefix = playbackState?.playing && playbackState?.title 
+        ? `${playbackState.title} • ` 
+        : '';
+      document.title = `${songPrefix}${server.name}`;
+    } else {
+      document.title = 'Listen Together';
+    }
+  }, [server?.name, playbackState?.title, playbackState?.playing]);
 
   const loading = serverLoading || queueLoading;
 

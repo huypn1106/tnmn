@@ -91,7 +91,7 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
     <iframe
       ref={iframeRef}
       className="absolute opacity-0 pointer-events-none"
-      src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false`}
+      src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false`}
       allow="autoplay"
     />
   );

@@ -56,7 +56,7 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
         width: '1',
         videoId: videoId,
         playerVars: {
-          autoplay: 1,
+          autoplay: 0,
           controls: 0,
           disablekb: 1,
           fs: 0,
