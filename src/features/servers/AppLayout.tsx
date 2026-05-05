@@ -3,6 +3,7 @@ import ServerList from './ServerList';
 import PlayerBar from '../playback/PlayerBar';
 import { usePresence } from '../../shared/hooks/usePresence';
 import ChatRail from '../chat/ChatRail';
+import MembersList from './MembersList';
 
 export default function AppLayout() {
   usePresence();
@@ -26,8 +27,13 @@ export default function AppLayout() {
       </main>
 
       {/* Right Rail: Chat + Members */}
-      <aside className="hidden h-full w-[var(--rail-w)] shrink-0 border-l border-rule bg-bg-2 lg:flex lg:flex-col">
-        <ChatRail />
+      <aside className="hidden h-full w-[var(--rail-w)] shrink-0 border-l border-rule bg-bg-2 lg:flex lg:flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <ChatRail />
+        </div>
+        <div className="shrink-0">
+          <MembersList />
+        </div>
       </aside>
 
       {/* Mobile Tab Bar placeholder */}

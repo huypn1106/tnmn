@@ -20,7 +20,7 @@ export const router = createBrowserRouter([
     element: <Suspense fallback={<Loading />}><SignInPage /></Suspense>,
   },
   {
-    path: '/join/:token',
+    path: '/invite/:token',
     element: <Suspense fallback={<Loading />}><InvitePage /></Suspense>,
   },
   {

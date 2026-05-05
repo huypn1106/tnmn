@@ -45,3 +45,28 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--text-3);
 }
+
+/* Range Input / Scrubber Styling */
+input[type="range"] {
+  @apply bg-rule;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  @apply h-1 w-full rounded-full;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  @apply h-3 w-3 rounded-full border border-accent bg-bg cursor-pointer;
+  margin-top: -4px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb {
+  @apply scale-125;
+}
+
+input[type="range"]:active::-webkit-slider-thumb {
+  @apply scale-110;
+}

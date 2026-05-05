@@ -15,6 +15,8 @@ export interface PlaybackState {
   updatedAt: number;
   djId: string;
   duration?: number;
+  shuffle?: boolean;
+  loop?: 'off' | 'one' | 'all';
 }
 
 export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, player: PlayerHandle | null) {

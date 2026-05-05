@@ -46,7 +46,8 @@ export default function InvitePage() {
     setLoading(true);
     try {
       await updateDoc(doc(db, 'servers', server.id), {
-        members: arrayUnion(user.uid)
+        members: arrayUnion(user.uid),
+        [`roles.${user.uid}`]: 'guest'
       });
       navigate(`/server/${server.id}`);
     } catch (err) {

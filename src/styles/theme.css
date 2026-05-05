@@ -6,7 +6,7 @@
   --text: #e8e5df;
   --text-2: #9b9890;
   --text-3: #5a5850;
-  --rule: rgba(232, 229, 223, 0.08);
+  --rule: rgba(232, 229, 223, 0.035);
 
   /* Accent — overridden dynamically by Color Thief */
   --accent: #c44b2b;

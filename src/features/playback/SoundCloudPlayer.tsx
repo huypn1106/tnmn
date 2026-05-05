@@ -1,4 +1,4 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
 import type { PlayerHandle } from './YouTubePlayer';
 
 declare global {
@@ -16,8 +16,18 @@ interface Props {
 const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd }, ref) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const widgetRef = useRef<any>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  const onReadyRef = useRef(onReady);
+  const onEndRef = useRef(onEnd);
 
   useEffect(() => {
+    onReadyRef.current = onReady;
+    onEndRef.current = onEnd;
+  }, [onReady, onEnd]);
+
+  useEffect(() => {
+    setIsReady(false);
     // Load SC API if not already loaded
     if (!window.SC) {
       const tag = document.createElement('script');
@@ -31,10 +41,11 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
       
       widgetRef.current = window.SC.Widget(iframeRef.current);
       widgetRef.current.bind(window.SC.Widget.Events.READY, () => {
-        onReady?.();
+        setIsReady(true);
+        onReadyRef.current?.();
       });
       widgetRef.current.bind(window.SC.Widget.Events.FINISH, () => {
-        onEnd?.();
+        onEndRef.current?.();
       });
     };
 
@@ -49,7 +60,7 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
       }, 100);
       return () => clearInterval(interval);
     }
-  }, [url, onReady, onEnd]);
+  }, [url]);
 
   useImperativeHandle(ref, () => ({
     play: () => widgetRef.current?.play(),
@@ -65,7 +76,7 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
       widgetRef.current?.getDuration((d: number) => { dur = d / 1000; });
       return dur;
     },
-  }));
+  }), [isReady]);
 
   return (
     <iframe

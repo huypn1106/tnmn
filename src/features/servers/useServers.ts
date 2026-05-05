@@ -9,9 +9,10 @@ export interface Server {
   coverURL: string | null;
   ownerId: string;
   members: string[];
-  djId: string;
+  roles: { [uid: string]: 'dj' | 'guest' };
   inviteToken: string;
   createdAt: any;
+  slug?: string;
 }
 
 export function useServers() {

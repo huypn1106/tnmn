@@ -1,4 +1,4 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
 
 declare global {
   interface Window {
@@ -24,8 +24,18 @@ interface Props {
 const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd }, ref) => {
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  const onReadyRef = useRef(onReady);
+  const onEndRef = useRef(onEnd);
 
   useEffect(() => {
+    onReadyRef.current = onReady;
+    onEndRef.current = onEnd;
+  }, [onReady, onEnd]);
+
+  useEffect(() => {
+    setIsReady(false);
     // Load YT API if not already loaded
     if (!window.YT) {
       const tag = document.createElement('script');
@@ -51,10 +61,13 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
           rel: 0,
         },
         events: {
-          onReady: () => onReady?.(),
+          onReady: () => {
+            setIsReady(true);
+            onReadyRef.current?.();
+          },
           onStateChange: (event: any) => {
             if (event.data === window.YT.PlayerState.ENDED) {
-              onEnd?.();
+              onEndRef.current?.();
             }
           },
         },
@@ -72,7 +85,7 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
         playerRef.current.destroy();
       }
     };
-  }, [videoId, onReady, onEnd]);
+  }, [videoId]);
 
   useImperativeHandle(ref, () => ({
     play: () => {
@@ -102,7 +115,7 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
       }
       return 0;
     },
-  }));
+  }), [isReady]);
 
   return (
     <div className="absolute opacity-0 pointer-events-none">

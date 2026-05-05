@@ -23,7 +23,7 @@ export default function CreateServerModal({ isOpen, onClose }: { isOpen: boolean
         coverURL: coverURL.trim() || null,
         ownerId: user.uid,
         members: [user.uid],
-        djId: user.uid,
+        roles: { [user.uid]: 'dj' },
         inviteToken: nanoid(10),
         createdAt: serverTimestamp(),
       };

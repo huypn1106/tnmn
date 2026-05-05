@@ -58,12 +58,29 @@ export default function FriendSearch() {
               <div className="h-6 w-6 bg-accent opacity-20" />
               <span className="font-sans text-xs font-medium text-text-2">{result.username}</span>
             </div>
-            <button
-              onClick={() => sendRequest(result.uid)}
-              className="font-mono text-[8px] uppercase tracking-tighter text-accent hover:underline"
-            >
-              Add Friend
-            </button>
+            {result.friendRequests?.some((r: any) => r.from === user?.uid) ? (
+              <span className="font-mono text-[8px] uppercase tracking-tighter text-text-3 italic">Request Sent</span>
+            ) : (
+              <button
+                onClick={async () => {
+                  try {
+                    await sendRequest(result.uid);
+                    // Refresh results to show 'Request Sent'
+                    setResults(prev => prev.map(r => 
+                      r.uid === result.uid 
+                        ? { ...r, friendRequests: [...(r.friendRequests || []), { from: user?.uid, status: 'pending' }] }
+                        : r
+                    ));
+                  } catch (err) {
+                    console.error("Failed to send friend request:", err);
+                    alert("Failed to send request. Check console.");
+                  }
+                }}
+                className="font-mono text-[8px] uppercase tracking-tighter text-accent hover:underline"
+              >
+                Add Friend
+              </button>
+            )}
           </div>
         ))}
       </div>

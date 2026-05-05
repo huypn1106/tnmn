@@ -13,7 +13,11 @@ service cloud.firestore {
     // User profiles
     match /users/{uid} {
       allow read: if signedIn();
-      allow write: if request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if signedIn() && (
+        request.auth.uid == uid || 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friendRequests'])
+      );
     }
 
     // Servers

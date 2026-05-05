@@ -34,7 +34,7 @@ export default function ServerList() {
           servers.map((server) => (
             <NavLink
               key={server.id}
-              to={`/server/${server.id}`}
+              to={`/server/${server.slug || server.id}`}
               className={({ isActive }) => 
                 `flex items-center gap-3 border-l-2 py-2 pl-2 transition-all hover:bg-bg-3 ${
                   isActive ? 'border-accent bg-bg-3 text-white' : 'border-transparent text-text-2'
