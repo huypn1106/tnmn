@@ -39,8 +39,8 @@ export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, pla
 
       setPlaybackState(data);
 
-      // Listener sync logic
-      if (!isDJ && player) {
+      // Sync logic for both DJ and listeners
+      if (player) {
         const now = Date.now();
         const targetPos = data.playing 
           ? data.position + (now - data.updatedAt) / 1000 
@@ -49,7 +49,9 @@ export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, pla
         const currentPos = player.getCurrentTime();
         
         // Sync if drift > 2s or if track/pause state differs significantly
-        if (Math.abs(targetPos - currentPos) > 2) {
+        // For DJ, we use a slightly larger threshold to avoid fight-back during seeks
+        const threshold = isDJ ? 3 : 2;
+        if (Math.abs(targetPos - currentPos) > threshold) {
           player.seekTo(targetPos);
         }
 

@@ -15,7 +15,7 @@ export default function PlayerBar() {
   const { serverId } = useParams<{ serverId: string }>();
   const { user } = useAuth();
   const [djId, setDjId] = useState<string | null>(null);
-  const playerRef = useRef<PlayerHandle>(null);
+  const [player, setPlayer] = useState<PlayerHandle | null>(null);
   const [localTime, setLocalTime] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   
@@ -33,7 +33,7 @@ export default function PlayerBar() {
     return () => unsubscribe();
   }, [serverId]);
 
-  const { playbackState, emitPlayback } = usePlaybackSync(serverId, isDJ, playerRef.current);
+  const { playbackState, emitPlayback } = usePlaybackSync(serverId, isDJ, player);
 
   // Dynamic Accent
   useColorThief((playbackState as any)?.thumbnail);
@@ -63,18 +63,18 @@ export default function PlayerBar() {
   // Scrubber local update loop
   useEffect(() => {
     const interval = setInterval(() => {
-      if (playerRef.current && !isDragging) {
-        setLocalTime(playerRef.current.getCurrentTime());
+      if (player && !isDragging) {
+        setLocalTime(player.getCurrentTime());
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [isDragging]);
+  }, [player, isDragging]);
 
   const togglePlay = () => {
     if (!playbackState) return;
     emitPlayback({ 
       playing: !playbackState.playing,
-      position: playerRef.current?.getCurrentTime() || 0 
+      position: player?.getCurrentTime() || 0 
     });
   };
 
@@ -83,7 +83,7 @@ export default function PlayerBar() {
     setIsDragging(false);
     if (!isDJ) return;
     const time = parseFloat((e.currentTarget as HTMLInputElement).value);
-    playerRef.current?.seekTo(time);
+    player?.seekTo(time);
     emitPlayback({ position: time });
   };
 
@@ -107,14 +107,14 @@ export default function PlayerBar() {
       {playbackState.source === 'youtube' && (
         <YouTubePlayer 
           videoId={playbackState.sourceId} 
-          ref={playerRef} 
+          ref={setPlayer} 
           onEnd={handleTrackEnd}
         />
       )}
       {playbackState.source === 'soundcloud' && (
         <SoundCloudPlayer 
           url={playbackState.sourceId} 
-          ref={playerRef} 
+          ref={setPlayer} 
           onEnd={handleTrackEnd}
         />
       )}
@@ -169,7 +169,7 @@ export default function PlayerBar() {
           <input 
             type="range"
             min={0}
-            max={playerRef.current?.getDuration() || 100}
+            max={player?.getDuration() || 100}
             step={0.1}
             disabled={!isDJ}
             value={isDragging ? undefined : localTime}
@@ -178,7 +178,7 @@ export default function PlayerBar() {
             onMouseUp={handleSeekEnd}
             className="flex-1 h-0.5 appearance-none bg-rule outline-none accent-accent cursor-pointer disabled:cursor-default"
           />
-          <span className="font-mono text-[10px] text-text-3 w-8">{formatTime(playerRef.current?.getDuration() || 0)}</span>
+          <span className="font-mono text-[10px] text-text-3 w-8">{formatTime(player?.getDuration() || 0)}</span>
         </div>
       </div>
 
