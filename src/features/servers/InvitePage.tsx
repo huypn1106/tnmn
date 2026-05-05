@@ -27,7 +27,7 @@ export default function InvitePage() {
           
           // If already a member, just redirect
           if (user && (serverData as any).members.includes(user.uid)) {
-            navigate(`/server/${serverDoc.id}`);
+            navigate(`/server/${serverData.slug || serverData.id}`);
           }
         }
       } catch (err) {
@@ -49,7 +49,7 @@ export default function InvitePage() {
         members: arrayUnion(user.uid),
         [`roles.${user.uid}`]: 'guest'
       });
-      navigate(`/server/${server.id}`);
+      navigate(`/server/${server.slug || server.id}`);
     } catch (err) {
       console.error(err);
       setError('Failed to join server.');

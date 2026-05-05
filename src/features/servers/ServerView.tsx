@@ -1,6 +1,6 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQueue } from '../queue/useQueue';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AddTrackModal from '../queue/AddTrackModal';
 import { usePlaybackSync } from '../playback/usePlaybackSync';
 import WaveformBars from '../playback/WaveformBars';
@@ -20,8 +20,15 @@ const EMPTY_QUOTES = [
 
 export default function ServerView() {
   const { serverId } = useParams<{ serverId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { server, resolvedId, loading: serverLoading } = useServer(serverId);
+
+  useEffect(() => {
+    if (server?.slug && serverId !== server.slug) {
+      navigate(`/server/${server.slug}`, { replace: true });
+    }
+  }, [server?.slug, serverId, navigate]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
