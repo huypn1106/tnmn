@@ -1,0 +1,24 @@
+:root {
+  /* Base */
+  --bg: #0f0e0c;
+  --bg-2: #1a1916;
+  --bg-3: #242320;
+  --text: #e8e5df;
+  --text-2: #9b9890;
+  --text-3: #5a5850;
+  --rule: rgba(232, 229, 223, 0.08);
+
+  /* Accent — overridden dynamically by Color Thief */
+  --accent: #c44b2b;
+  --accent-dim: rgba(196, 75, 43, 0.15);
+
+  /* Typography */
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-mono: 'DM Mono', 'Courier New', monospace;
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+
+  /* Spacing */
+  --sidebar-w: 220px;
+  --rail-w: 280px;
+  --player-h: 72px;
+}
