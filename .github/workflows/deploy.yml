@@ -34,6 +34,7 @@ jobs:
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
           VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
           VITE_YT_API_KEY: ${{ secrets.VITE_YT_API_KEY }}
+          VITE_NVIDIA_API_KEY: ${{ secrets.VITE_NVIDIA_API_KEY }}
 
       - name: Deploy
         run: npx wrangler pages deploy dist --project-name=tnmn --branch=main --commit-dirty=true
