@@ -9,6 +9,7 @@ import { useColorThief } from '../../shared/hooks/useColorThief';
 import WaveformBars from './WaveformBars';
 import { useQueue } from '../queue/useQueue';
 import { useServer } from '../servers/useServer';
+import { useMediaSession } from './useMediaSession';
 
 export default function PlayerBar() {
   const { serverId } = useParams<{ serverId: string }>();
@@ -155,13 +156,47 @@ export default function PlayerBar() {
     localStorage.setItem('tnmn_volume', volume.toString());
   }, [player, isMuted, volume]);
 
-  const togglePlay = useCallback(() => {
+  const handlePlay = useCallback(() => {
     if (!playbackState) return;
     emitPlayback({ 
-      playing: !playbackState.playing,
+      playing: true,
       position: player?.getCurrentTime() || 0 
     });
   }, [playbackState, emitPlayback, player]);
+
+  const handlePause = useCallback(() => {
+    if (!playbackState) return;
+    emitPlayback({ 
+      playing: false,
+      position: player?.getCurrentTime() || 0 
+    });
+  }, [playbackState, emitPlayback, player]);
+
+  const togglePlay = useCallback(() => {
+    if (!playbackState) return;
+    if (playbackState.playing) handlePause();
+    else handlePlay();
+  }, [playbackState, handlePlay, handlePause]);
+
+  const handleSeek = useCallback((time: number) => {
+    if (!isDJ) return;
+    player?.seekTo(time);
+    emitPlayback({ position: time });
+  }, [isDJ, player, emitPlayback]);
+
+  // OS Media Session Support
+  useMediaSession(
+    playbackState,
+    {
+      onPlay: handlePlay,
+      onPause: handlePause,
+      onPreviousTrack: isDJ ? handlePrevTrack : undefined,
+      onNextTrack: isDJ ? handleTrackEnd : undefined,
+      onSeekTo: isDJ ? handleSeek : undefined,
+    },
+    localTime,
+    player?.getDuration() || 0
+  );
 
   const handleSeekStart = () => setIsDragging(true);
   const handleSeekEnd = (e: React.MouseEvent<HTMLInputElement>) => {
