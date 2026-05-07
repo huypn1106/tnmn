@@ -36,8 +36,15 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
     onEndRef.current = onEnd;
   }, [onReady, onEnd]);
 
+  const initialVideoId = useRef(videoId);
+
   useEffect(() => {
-    setIsReady(false);
+    if (isReady && playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+      playerRef.current.loadVideoById(videoId);
+    }
+  }, [videoId, isReady]);
+
+  useEffect(() => {
     // Load YT API if not already loaded
     if (!window.YT) {
       const tag = document.createElement('script');
@@ -47,14 +54,10 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
     }
 
     const initPlayer = () => {
-      if (playerRef.current) {
-        playerRef.current.destroy();
-      }
-
       playerRef.current = new window.YT.Player(containerRef.current, {
         height: '1',
         width: '1',
-        videoId: videoId,
+        videoId: initialVideoId.current,
         playerVars: {
           autoplay: 0,
           controls: 0,
@@ -87,7 +90,7 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
         playerRef.current.destroy();
       }
     };
-  }, [videoId]);
+  }, []);
 
   useImperativeHandle(ref, () => ({
     play: () => {

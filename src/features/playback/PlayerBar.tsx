@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import YouTubePlayer from './YouTubePlayer';
@@ -10,6 +10,7 @@ import WaveformBars from './WaveformBars';
 import { useQueue } from '../queue/useQueue';
 import { useServer } from '../servers/useServer';
 import { useMediaSession } from './useMediaSession';
+import { useWorkerInterval } from '../../shared/hooks/useWorkerInterval';
 
 export default function PlayerBar() {
   const { serverId } = useParams<{ serverId: string }>();
@@ -34,6 +35,8 @@ export default function PlayerBar() {
   const { queue } = useQueue(resolvedId || undefined);
   const { playbackState, emitPlayback } = usePlaybackSync(resolvedId || undefined, isDJ, player, hasInteracted);
 
+  const isTransitioningRef = useRef(false);
+
   useEffect(() => {
     const handleInteraction = () => setHasInteracted(true);
     window.addEventListener('mousedown', handleInteraction);
@@ -49,6 +52,12 @@ export default function PlayerBar() {
 
   const handleTrackEnd = useCallback(() => {
     if (!isDJ || !playbackState || queue.length === 0) return;
+    if (isTransitioningRef.current) return;
+
+    isTransitioningRef.current = true;
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 2000); // Prevent double-firing within 2 seconds
 
     if (playbackState.loop === 'one') {
       player?.seekTo(0);
@@ -135,14 +144,28 @@ export default function PlayerBar() {
   };
 
   // Scrubber local update loop
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (player && !isDragging) {
-        setLocalTime(player.getCurrentTime());
+  useWorkerInterval(() => {
+    if (player && !isDragging) {
+      const currentTime = player.getCurrentTime();
+      const duration = player.getDuration();
+      setLocalTime(currentTime);
+
+      // Fallback for background tabs where native onEnd events might be throttled
+      if (duration > 0 && playbackState?.playing) {
+        // Calculate expected time based on when the track started/seeked
+        const elapsedSinceUpdate = (Date.now() - playbackState.updatedAt) / 1000;
+        const expectedTime = playbackState.position + elapsedSinceUpdate;
+
+        // Use the larger of the actual time or expected time
+        // This is crucial because iframes often freeze their currentTime property in background tabs
+        const effectiveTime = Math.max(currentTime, expectedTime);
+
+        if (effectiveTime > 0 && duration - effectiveTime <= 1.5) {
+          handleTrackEnd();
+        }
       }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [player, isDragging]);
+    }
+  }, 1000);
   
   useEffect(() => {
     if (isMuted) {

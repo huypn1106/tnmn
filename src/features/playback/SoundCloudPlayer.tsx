@@ -28,8 +28,22 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
     onEndRef.current = onEnd;
   }, [onReady, onEnd]);
 
+  const initialUrl = useRef(url);
+
   useEffect(() => {
-    setIsReady(false);
+    if (isReady && widgetRef.current) {
+      widgetRef.current.load(url, {
+        auto_play: false,
+        hide_related: true,
+        show_comments: false,
+        show_user: false,
+        show_reposts: false,
+        show_teaser: false
+      });
+    }
+  }, [url, isReady]);
+
+  useEffect(() => {
     // Load SC API if not already loaded
     if (!window.SC) {
       const tag = document.createElement('script');
@@ -71,7 +85,7 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
       }, 100);
       return () => clearInterval(interval);
     }
-  }, [url]);
+  }, []);
 
   useImperativeHandle(ref, () => ({
     play: () => widgetRef.current?.play(),
@@ -91,7 +105,7 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
     <iframe
       ref={iframeRef}
       className="absolute opacity-0 pointer-events-none"
-      src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false`}
+      src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(initialUrl.current)}&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false`}
       allow="autoplay"
     />
   );
