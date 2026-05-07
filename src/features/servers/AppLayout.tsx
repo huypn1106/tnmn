@@ -26,11 +26,11 @@ export default function AppLayout() {
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-bg text-text selection:bg-accent selection:text-white">
-      <div className="flex flex-1 overflow-hidden md:flex-row">
+      <div className="relative flex flex-1 overflow-hidden md:flex-row">
         {/* Sidebar: Servers + Friends */}
         <aside className={`
           ${activeTab === 'servers' ? 'flex' : 'hidden'} 
-          fixed inset-0 z-40 bg-bg md:relative md:flex md:h-full md:w-[var(--sidebar-w)] md:shrink-0 md:border-r md:border-rule md:bg-bg-2
+          absolute inset-0 z-40 bg-bg md:relative md:flex md:h-full md:w-[var(--sidebar-w)] md:shrink-0 md:border-r md:border-rule md:bg-bg-2
         `}>
           <ServerList 
             onCloseMobile={() => setActiveTab('queue')} 
@@ -54,7 +54,7 @@ export default function AppLayout() {
           onMouseEnter={() => setHasUnread(false)}
           className={`
           ${activeTab === 'chat' ? 'flex' : 'hidden'} 
-          fixed inset-0 z-40 flex-col bg-bg md:relative md:border-l md:border-rule md:bg-bg-2 lg:flex lg:w-[var(--rail-w)] lg:shrink-0
+          absolute inset-0 z-40 flex-col bg-bg md:relative md:border-l md:border-rule md:bg-bg-2 lg:flex lg:w-[var(--rail-w)] lg:shrink-0
         `}>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between p-4 border-b border-rule lg:hidden">
