@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../app/firebase';
 import { useAuth } from '../auth/useAuth';
@@ -12,10 +12,11 @@ export interface Message {
   createdAt: any;
 }
 
-export function useChat(serverId: string | undefined) {
+export function useChat(serverId: string | undefined, onNewMessage?: () => void) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const isInitialLoad = useRef(true);
 
   useEffect(() => {
     if (!serverId) {
@@ -24,6 +25,7 @@ export function useChat(serverId: string | undefined) {
       return;
     }
 
+    isInitialLoad.current = true;
     const q = query(
       collection(db, 'servers', serverId, 'messages'),
       orderBy('createdAt', 'desc'),
@@ -35,12 +37,27 @@ export function useChat(serverId: string | undefined) {
         id: doc.id,
         ...doc.data()
       })) as Message[];
-      setMessages(msgs.reverse());
+      
+      const reversedMsgs = [...msgs].reverse();
+      setMessages(reversedMsgs);
       setLoading(false);
+
+      if (!isInitialLoad.current) {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const msg = change.doc.data() as Message;
+            if (msg.userId !== user?.uid) {
+              onNewMessage?.();
+            }
+          }
+        });
+      }
+      
+      isInitialLoad.current = false;
     });
 
     return () => unsubscribe();
-  }, [serverId]);
+  }, [serverId, user?.uid, onNewMessage]);
 
   const sendMessage = async (text: string) => {
     if (!user || !serverId || !text.trim()) return;

@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { useQueue } from '../queue/useQueue';
 import { useState, useEffect } from 'react';
 import AddTrackModal from '../queue/AddTrackModal';
@@ -21,6 +21,7 @@ const EMPTY_QUOTES = [
 export default function ServerView() {
   const { serverId } = useParams<{ serverId: string }>();
   const navigate = useNavigate();
+  const { hasUnread } = useOutletContext<{ hasUnread: boolean }>();
   const { user } = useAuth();
   const { server, resolvedId, loading: serverLoading } = useServer(serverId);
 
@@ -29,6 +30,7 @@ export default function ServerView() {
       navigate(`/server/${server.slug}`, { replace: true });
     }
   }, [server?.slug, serverId, navigate]);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
@@ -42,11 +44,12 @@ export default function ServerView() {
       const songPrefix = playbackState?.playing && playbackState?.title 
         ? `${playbackState.title} • ` 
         : '';
-      document.title = `${songPrefix}${server.name}`;
+      const unreadPrefix = hasUnread ? '(•) ' : '';
+      document.title = `${unreadPrefix}${songPrefix}${server.name}`;
     } else {
-      document.title = 'Listen Together';
+      document.title = hasUnread ? '(•) Listen Together' : 'Listen Together';
     }
-  }, [server?.name, playbackState?.title, playbackState?.playing]);
+  }, [server?.name, playbackState?.title, playbackState?.playing, hasUnread]);
 
   const loading = serverLoading || queueLoading;
 

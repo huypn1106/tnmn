@@ -14,20 +14,30 @@ export default function AddTrackModal({ serverId, isOpen, onClose }: { serverId:
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       setInputValue('');
       setSearchResults([]);
       setError('');
+      setSuccess(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
 
   const addTrack = async (meta: TrackMetadata) => {
     if (!user) return;
     
     setLoading(true);
     setError('');
+    setSuccess(false);
     try {
       // Get current last order
       const q = query(collection(db, 'servers', serverId, 'queue'), orderBy('order', 'desc'), limit(1));
@@ -42,7 +52,9 @@ export default function AddTrackModal({ serverId, isOpen, onClose }: { serverId:
         addedAt: serverTimestamp(),
       });
 
-      onClose();
+      setSuccess(true);
+      setInputValue('');
+      setSearchResults([]);
     } catch (err: any) {
       setError(err.message || 'Failed to add track');
     } finally {
@@ -119,6 +131,7 @@ export default function AddTrackModal({ serverId, isOpen, onClose }: { serverId:
                 autoFocus
               />
               {error && <p className="font-mono text-[10px] uppercase text-accent mt-1">{error}</p>}
+              {success && <p className="font-mono text-[10px] uppercase text-green-500 mt-1">Track added successfully</p>}
             </div>
             <button
               type="submit"

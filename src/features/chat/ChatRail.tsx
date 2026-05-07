@@ -3,10 +3,10 @@ import { useParams } from 'react-router-dom';
 import { useChat } from './useChat';
 import { useAuth } from '../auth/useAuth';
 
-export default function ChatRail() {
+export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }) {
   const { serverId } = useParams<{ serverId: string }>();
   const { user } = useAuth();
-  const { messages, sendMessage } = useChat(serverId);
+  const { messages, sendMessage } = useChat(serverId, onNewMessage);
   const [text, setText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
