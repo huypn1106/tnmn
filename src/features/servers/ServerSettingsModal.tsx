@@ -199,7 +199,7 @@ export default function ServerSettingsModal({ isOpen, onClose, server }: ServerS
               <button
                 type="submit"
                 disabled={loading || !name.trim()}
-                className="flex-1 bg-accent py-3 font-mono text-xs uppercase tracking-widest text-white transition-all hover:brightness-110 disabled:opacity-50"
+                className="flex-1 bg-accent py-3 font-mono text-xs uppercase tracking-widest text-accent-foreground transition-all hover:brightness-110 disabled:opacity-50"
               >
                 {loading ? 'Saving...' : 'Save Settings'}
               </button>
@@ -241,7 +241,7 @@ export default function ServerSettingsModal({ isOpen, onClose, server }: ServerS
                           setLoading(false);
                         }
                       }}
-                      className="flex-1 py-2 font-mono text-[10px] uppercase bg-accent text-white"
+                      className="flex-1 py-2 font-mono text-[10px] uppercase bg-accent text-accent-foreground"
                     >
                       Delete Forever
                     </button>

@@ -97,7 +97,7 @@ export default function InvitePage() {
 
         <button
           onClick={handleJoin}
-          className="w-full bg-accent py-4 font-mono text-sm uppercase tracking-widest text-white transition-all hover:brightness-110"
+          className="w-full bg-accent py-4 font-mono text-sm uppercase tracking-widest text-accent-foreground transition-all hover:brightness-110"
         >
           Join Server
         </button>

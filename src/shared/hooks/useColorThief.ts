@@ -7,6 +7,7 @@ export function useColorThief(imageUrl: string | undefined) {
       // Reset to default accent
       document.documentElement.style.setProperty('--accent', '#c44b2b');
       document.documentElement.style.setProperty('--accent-dim', 'rgba(196, 75, 43, 0.15)');
+      document.documentElement.style.setProperty('--accent-foreground', '#e8e5df');
       return;
     }
 
@@ -31,9 +32,15 @@ export function useColorThief(imageUrl: string | undefined) {
         const color = `rgb(${r}, ${g}, ${b})`;
         const colorDim = `rgba(${r}, ${g}, ${b}, 0.15)`;
         
+        // Calculate foreground color for contrast (black or white)
+        // Using the same boosted r, g, b
+        const finalLuminance = (0.299 * r + 0.587 * g + 0.114 * b);
+        const foreground = finalLuminance > 160 ? '#0f0e0c' : '#e8e5df';
+        
         document.documentElement.style.setProperty('--accent', color);
         document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
         document.documentElement.style.setProperty('--accent-dim', colorDim);
+        document.documentElement.style.setProperty('--accent-foreground', foreground);
       } catch (e) {
         console.error('ColorThief failed', e);
       }

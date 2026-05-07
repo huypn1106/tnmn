@@ -21,6 +21,7 @@ export default {
         'text-3': 'var(--text-3)',
         accent: 'var(--accent)',
         'accent-dim': 'var(--accent-dim)',
+        'accent-foreground': 'var(--accent-foreground)',
         rule: 'var(--rule)',
       },
     },

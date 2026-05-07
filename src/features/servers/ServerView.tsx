@@ -26,10 +26,14 @@ export default function ServerView() {
   const { server, resolvedId, loading: serverLoading } = useServer(serverId);
 
   useEffect(() => {
-    if (server?.slug && serverId !== server.slug) {
+    // Only redirect if the server object we have matches the current serverId/slug
+    // This prevents stale server data from triggering a redirect during transitions
+    const isCurrentServer = server && (server.id === serverId || server.slug === serverId);
+
+    if (isCurrentServer && server.slug && serverId !== server.slug) {
       navigate(`/server/${server.slug}`, { replace: true });
     }
-  }, [server?.slug, serverId, navigate]);
+  }, [server, serverId, navigate]);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -69,6 +73,14 @@ export default function ServerView() {
   };
 
   const quote = EMPTY_QUOTES[Math.floor(Date.now() / 86400000) % EMPTY_QUOTES.length];
+
+  if (serverLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
 
   if (!resolvedId) {
     return (
@@ -123,7 +135,7 @@ export default function ServerView() {
               </button>
               {showCopied && (
                 <div className="absolute left-1/2 top-full mt-2 -translate-x-1/2 animate-in fade-in slide-in-from-top-1 duration-200 z-50">
-                  <div className="whitespace-nowrap bg-accent px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white shadow-xl">
+                  <div className="whitespace-nowrap bg-accent px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-accent-foreground shadow-xl">
                     Link Copied
                   </div>
                 </div>

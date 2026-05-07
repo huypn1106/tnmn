@@ -77,7 +77,7 @@ export default function CreateServerModal({ isOpen, onClose }: { isOpen: boolean
             <button
               type="submit"
               disabled={loading || !name.trim()}
-              className="flex-1 bg-accent py-3 font-mono text-xs uppercase tracking-widest text-white transition-all hover:brightness-110 disabled:opacity-50"
+              className="flex-1 bg-accent py-3 font-mono text-xs uppercase tracking-widest text-accent-foreground transition-all hover:brightness-110 disabled:opacity-50"
             >
               {loading ? 'Creating...' : 'Create'}
             </button>

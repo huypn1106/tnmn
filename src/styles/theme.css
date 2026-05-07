@@ -11,6 +11,7 @@
   /* Accent — overridden dynamically by Color Thief */
   --accent: #c44b2b;
   --accent-dim: rgba(196, 75, 43, 0.15);
+  --accent-foreground: #e8e5df;
 
   /* Typography */
   --font-serif: 'Playfair Display', Georgia, serif;

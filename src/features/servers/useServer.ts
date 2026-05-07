@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { db } from '../../app/firebase';
 import type { Server } from './useServers';
 
@@ -17,44 +17,59 @@ export function useServer(serverId: string | undefined) {
     }
 
     setLoading(true);
+    setServer(null);
+    setResolvedId(null);
+
+    let active = true;
     let unsubscribe: () => void = () => {};
 
     const resolveAndWatch = async () => {
-      // 1. Try by ID first
-      const docRef = doc(db, 'servers', serverId);
-      const unsub = onSnapshot(docRef, async (docSnap) => {
+      try {
+        // 1. Try by ID first
+        const docRef = doc(db, 'servers', serverId);
+        const docSnap = await getDoc(docRef);
+        
+        if (!active) return;
+
+        let targetId = '';
         if (docSnap.exists()) {
-          setServer({ id: docSnap.id, ...docSnap.data() } as Server);
-          setResolvedId(docSnap.id);
-          setLoading(false);
+          targetId = docSnap.id;
         } else {
           // 2. Try by slug
           const q = query(collection(db, 'servers'), where('slug', '==', serverId));
           const snap = await getDocs(q);
+          if (!active) return;
+          
           if (!snap.empty) {
-            const firstDoc = snap.docs[0];
-            // Since slugs can change, we might want to watch the resolved ID instead
-            // But for now, we'll just watch this specific doc reference
-            const unsubSlug = onSnapshot(doc(db, 'servers', firstDoc.id), (s) => {
-              if (s.exists()) {
-                setServer({ id: s.id, ...s.data() } as Server);
-                setResolvedId(s.id);
-              }
-              setLoading(false);
-            });
-            unsubscribe = unsubSlug;
-          } else {
-            setServer(null);
-            setResolvedId(null);
-            setLoading(false);
+            targetId = snap.docs[0].id;
           }
         }
-      });
-      unsubscribe = unsub;
+
+        if (targetId && active) {
+          unsubscribe = onSnapshot(doc(db, 'servers', targetId), (s) => {
+            if (s.exists() && active) {
+              setServer({ id: s.id, ...s.data() } as Server);
+              setResolvedId(s.id);
+            }
+            setLoading(false);
+          });
+        } else if (active) {
+          setServer(null);
+          setResolvedId(null);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error resolving server:", error);
+        if (active) setLoading(false);
+      }
     };
 
     resolveAndWatch();
-    return () => unsubscribe();
+    
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [serverId]);
 
   return { server, resolvedId, loading };

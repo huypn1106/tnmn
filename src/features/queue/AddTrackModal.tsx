@@ -136,7 +136,7 @@ export default function AddTrackModal({ serverId, isOpen, onClose }: { serverId:
             <button
               type="submit"
               disabled={loading || searching || !inputValue.trim()}
-              className="h-10 px-6 bg-accent font-mono text-[10px] uppercase tracking-widest text-white hover:brightness-110 disabled:opacity-50"
+              className="h-10 px-6 bg-accent font-mono text-[10px] uppercase tracking-widest text-accent-foreground hover:brightness-110 disabled:opacity-50"
             >
               {loading ? 'Adding...' : searching ? 'Searching...' : 'Go'}
             </button>

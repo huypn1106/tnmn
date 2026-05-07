@@ -251,7 +251,7 @@ export default function PlayerBar() {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg-2/80 backdrop-blur-sm animate-in fade-in duration-300">
           <button 
             onClick={() => setHasInteracted(true)}
-            className="flex items-center gap-3 bg-accent px-6 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-white shadow-2xl hover:scale-105 transition-transform active:scale-95"
+            className="flex items-center gap-3 bg-accent px-6 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-foreground shadow-2xl hover:scale-105 transition-transform active:scale-95"
           >
             <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
             Join Broadcast
@@ -358,7 +358,7 @@ export default function PlayerBar() {
             >
               <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
               {playbackState.loop === 'one' && (
-                <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center bg-accent text-[8px] font-bold text-bg rounded-full">1</span>
+                <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center bg-accent text-[8px] font-bold text-accent-foreground rounded-full">1</span>
               )}
             </button>
           )}

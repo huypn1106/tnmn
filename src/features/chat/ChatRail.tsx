@@ -52,7 +52,7 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
               </span>
             </div>
             <div className={`max-w-[90%] px-3 py-2 text-xs font-sans leading-relaxed transition-all ${
-              msg.userId === user?.uid ? 'bg-accent text-text italic shadow-lg shadow-accent/10' : 'bg-bg-3 text-text-2 border-l border-accent/20'
+              msg.userId === user?.uid ? 'bg-accent text-accent-foreground italic shadow-lg shadow-accent/10' : 'bg-bg-3 text-text-2 border-l border-accent/20'
             }`}>
               {msg.text}
             </div>
