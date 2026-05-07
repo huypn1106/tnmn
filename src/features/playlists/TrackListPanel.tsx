@@ -3,7 +3,7 @@ import { usePlaybackSync } from '../playback/usePlaybackSync';
 import WaveformBars from '../playback/WaveformBars';
 import { removeTrackFromPlaylist } from './trackActions';
 import { useAuth } from '../auth/useAuth';
-import { setActivePlaylist, deletePlaylist, clonePlaylist, updatePlaylist } from './playlistActions';
+import { setActivePlaylist, deletePlaylist } from './playlistActions';
 import PlaylistSettingsModal from './PlaylistSettingsModal';
 import { useState, useEffect, useRef } from 'react';
 import { rtdb } from '../../app/firebase';
@@ -24,14 +24,14 @@ export default function TrackListPanel({
   isDJ: boolean;
 }) {
   const { user } = useAuth();
-  const { setViewedPlaylistId } = useOutletContext<{ setViewedPlaylistId: (id: string) => void }>();
+  const {} = useOutletContext<{ setViewedPlaylistId: (id: string) => void }>();
   const { tracks, loading } = useTracks(serverId, playlist.id);
   const { playbackState } = usePlaybackSync(serverId, isDJ, null, true);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [trackToRemove, setTrackToRemove] = useState<any>(null);
   const [showDeletePlaylistConfirm, setShowDeletePlaylistConfirm] = useState(false);
-  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  
   
   const trackRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const containerRef = useRef<HTMLDivElement>(null);
@@ -233,7 +233,7 @@ export default function TrackListPanel({
               return (
                 <div 
                   key={item.id} 
-                  ref={el => trackRefs.current[item.id] = el}
+                  ref={el => { trackRefs.current[item.id] = el; }}
                   className={`group relative flex items-center gap-4 border p-3 transition-all scroll-mt-12
                     ${isPlaying ? 'border-accent/50 bg-bg-3' : 'border-transparent hover:border-rule'}
                   `}

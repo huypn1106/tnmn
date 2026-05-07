@@ -13,6 +13,7 @@ export interface Server {
   inviteToken: string;
   createdAt: any;
   slug?: string;
+  activePlaylistId?: string;
 }
 
 export function useServers() {

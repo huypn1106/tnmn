@@ -13,7 +13,7 @@ interface ServerListProps {
   setViewedPlaylistId: (id: string) => void;
 }
 
-export default function ServerList({ onCloseMobile, viewedPlaylistId, setViewedPlaylistId }: ServerListProps) {
+export default function ServerList({ viewedPlaylistId, setViewedPlaylistId }: ServerListProps) {
   const { servers, loading } = useServers();
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -127,7 +127,6 @@ export default function ServerList({ onCloseMobile, viewedPlaylistId, setViewedP
             activePlaylistId={activePlaylistId}
             viewedPlaylistId={viewedPlaylistId}
             setViewedPlaylistId={setViewedPlaylistId}
-            isDJ={isDJ}
           />
         </div>
       )}

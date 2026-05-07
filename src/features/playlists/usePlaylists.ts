@@ -65,7 +65,7 @@ export function useAllTracks(serverId: string | undefined) {
       const ref = collection(db, 'servers', serverId, 'playlists', p.id, 'tracks');
       const q = query(ref, orderBy('order', 'asc'));
       const unsub = onSnapshot(q, (snap) => {
-        playlistTracks[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data(), playlistId: p.id } as Track));
+        playlistTracks[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data(), playlistId: p.id } as any as Track));
         
         // Merge all tracks, sorted by playlist order then track order
         const merged = playlists

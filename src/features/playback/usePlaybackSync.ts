@@ -7,7 +7,7 @@ import type { PlayerHandle } from './YouTubePlayer';
 export interface PlaybackState {
   playlistId?: string;
   trackId: string;
-  source: 'youtube' | 'soundcloud';
+  source: 'youtube' | 'soundcloud' | 'url';
   sourceId: string;
   title?: string;
   thumbnail?: string;

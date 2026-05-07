@@ -14,7 +14,7 @@ import AddTrackModal from '../queue/AddTrackModal';
 export default function ServerView() {
   const { serverId } = useParams<{ serverId: string }>();
   const navigate = useNavigate();
-  const { hasUnread, viewedPlaylistId, setViewedPlaylistId } = useOutletContext<{ 
+  const { hasUnread, viewedPlaylistId } = useOutletContext<{ 
     hasUnread: boolean;
     viewedPlaylistId: string | null;
     setViewedPlaylistId: (id: string) => void;
@@ -40,7 +40,7 @@ export default function ServerView() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
 
-  const { playlists, loading: playlistsLoading } = usePlaylists(resolvedId);
+  const { playlists, loading: playlistsLoading } = usePlaylists(resolvedId || undefined);
 
   const isDJ = !!user && !!server && server.roles?.[user.uid] === 'dj';
   const isOwner = !!user && !!server && server.ownerId === user.uid;

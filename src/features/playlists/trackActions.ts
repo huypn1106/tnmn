@@ -13,7 +13,7 @@ async function getLastTrackOrder(serverId: string, playlistId: string): Promise<
 export async function addTrackToPlaylist(
   serverId: string,
   playlistId: string,
-  track: Omit<Track, 'id' | 'order' | 'addedAt'>,
+  track: Omit<Track, 'id' | 'order' | 'addedAt' | 'addedBy'>,
   addedBy: string
 ): Promise<void> {
   const tracksRef = collection(db, 'servers', serverId, 'playlists', playlistId, 'tracks');

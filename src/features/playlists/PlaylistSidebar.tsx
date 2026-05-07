@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { usePlaylists } from './usePlaylists';
 import CreatePlaylistModal from './CreatePlaylistModal';
 import { useAuth } from '../auth/useAuth';
-import { setActivePlaylist, deletePlaylist, clonePlaylist, reorderPlaylist, updatePlaylist } from './playlistActions';
+import { deletePlaylist, clonePlaylist, reorderPlaylist } from './playlistActions';
 import ConfirmModal from '../../shared/ConfirmModal';
 import RenamePlaylistModal from './RenamePlaylistModal';
 import type { Playlist } from './types';
@@ -12,13 +12,11 @@ export default function PlaylistSidebar({
   activePlaylistId, 
   viewedPlaylistId, 
   setViewedPlaylistId,
-  isDJ 
 }: { 
   serverId: string; 
   activePlaylistId: string | null;
   viewedPlaylistId: string | null;
   setViewedPlaylistId: (id: string) => void;
-  isDJ: boolean;
 }) {
   const { playlists, loading } = usePlaylists(serverId);
   const { user } = useAuth();

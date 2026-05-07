@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db } from '../../app/firebase';
+// ...
 import { useAuth } from '../auth/useAuth';
 import { fetchTrackMetadata, parseYouTubeVideoId, parseSoundCloudUrl } from './metadata';
 import type { TrackMetadata } from './metadata';
