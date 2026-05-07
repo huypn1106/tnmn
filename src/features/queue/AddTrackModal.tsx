@@ -7,7 +7,9 @@ import type { TrackMetadata } from './metadata';
 import { searchYouTube } from './youtubeApi';
 import type { YouTubeSearchResult } from './youtubeApi';
 
-export default function AddTrackModal({ serverId, isOpen, onClose }: { serverId: string; isOpen: boolean; onClose: () => void }) {
+import { addTrackToPlaylist } from '../playlists/trackActions';
+
+export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }: { serverId: string; playlistId: string; isOpen: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [searchResults, setSearchResults] = useState<YouTubeSearchResult[]>([]);
@@ -33,24 +35,19 @@ export default function AddTrackModal({ serverId, isOpen, onClose }: { serverId:
   }, [success]);
 
   const addTrack = async (meta: TrackMetadata) => {
-    if (!user) return;
+    if (!user || !playlistId) return;
     
     setLoading(true);
     setError('');
     setSuccess(false);
     try {
-      // Get current last order
-      const q = query(collection(db, 'servers', serverId, 'queue'), orderBy('order', 'desc'), limit(1));
-      const snap = await getDocs(q);
-      const lastOrder = snap.empty ? 0 : snap.docs[0].data().order;
-
-      await addDoc(collection(db, 'servers', serverId, 'queue'), {
-        ...meta,
-        addedBy: user.uid,
-        addedByName: user.displayName || 'Anonymous',
-        order: lastOrder + 1000,
-        addedAt: serverTimestamp(),
-      });
+      await addTrackToPlaylist(serverId, playlistId, {
+        source: meta.source,
+        sourceId: meta.sourceId,
+        title: meta.title,
+        thumbnail: meta.thumbnail,
+        duration: meta.duration,
+      }, user.uid);
 
       setSuccess(true);
       setInputValue('');

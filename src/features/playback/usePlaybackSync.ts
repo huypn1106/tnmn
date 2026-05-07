@@ -5,6 +5,7 @@ import { useAuth } from '../auth/useAuth';
 import type { PlayerHandle } from './YouTubePlayer';
 
 export interface PlaybackState {
+  playlistId?: string;
   trackId: string;
   source: 'youtube' | 'soundcloud';
   sourceId: string;
@@ -17,6 +18,7 @@ export interface PlaybackState {
   duration?: number;
   shuffle?: boolean;
   loop?: 'off' | 'one' | 'all';
+  crossPlaylist?: boolean;
 }
 
 export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, player: PlayerHandle | null, hasInteracted: boolean) {

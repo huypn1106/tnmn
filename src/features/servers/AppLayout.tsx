@@ -11,6 +11,7 @@ export default function AppLayout() {
   usePresence();
   const [activeTab, setActiveTab] = useState<'servers' | 'queue' | 'chat'>('queue');
   const [hasUnread, setHasUnread] = useState(false);
+  const [viewedPlaylistId, setViewedPlaylistId] = useState<string | null>(null);
 
   const handleNewMessage = () => {
     if (activeTab !== 'chat') {
@@ -31,7 +32,11 @@ export default function AppLayout() {
           ${activeTab === 'servers' ? 'flex' : 'hidden'} 
           fixed inset-0 z-40 bg-bg md:relative md:flex md:h-full md:w-[var(--sidebar-w)] md:shrink-0 md:border-r md:border-rule md:bg-bg-2
         `}>
-          <ServerList onCloseMobile={() => setActiveTab('queue')} />
+          <ServerList 
+            onCloseMobile={() => setActiveTab('queue')} 
+            viewedPlaylistId={viewedPlaylistId}
+            setViewedPlaylistId={setViewedPlaylistId}
+          />
         </aside>
 
         {/* Main content: Queue + Player */}
@@ -40,7 +45,7 @@ export default function AppLayout() {
           relative flex flex-1 flex-col overflow-hidden
         `}>
           <div className="flex-1 overflow-y-auto">
-            <Outlet context={{ hasUnread }} />
+            <Outlet context={{ hasUnread, viewedPlaylistId, setViewedPlaylistId }} />
           </div>
         </main>
 

@@ -1,47 +1,53 @@
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { useQueue } from '../queue/useQueue';
 import { useState, useEffect } from 'react';
 import AddTrackModal from '../queue/AddTrackModal';
 import { usePlaybackSync } from '../playback/usePlaybackSync';
-import WaveformBars from '../playback/WaveformBars';
 
-import { rtdb } from '../../app/firebase';
-import { ref, update } from 'firebase/database';
 import { useAuth } from '../auth/useAuth';
 import ServerSettingsModal from './ServerSettingsModal';
 import { useServer } from './useServer';
 
-const EMPTY_QUOTES = [
-  "The silence is a canvas. Paint it.",
-  "Without music, life would be a mistake.",
-  "Where words fail, music speaks.",
-  "Music in the soul can be heard by the universe.",
-];
+import TrackListPanel from '../playlists/TrackListPanel';
+import { usePlaylists } from '../playlists/usePlaylists';
+import { migrateQueueToPlaylist } from '../playlists/migrateQueue';
 
 export default function ServerView() {
   const { serverId } = useParams<{ serverId: string }>();
   const navigate = useNavigate();
-  const { hasUnread } = useOutletContext<{ hasUnread: boolean }>();
+  const { hasUnread, viewedPlaylistId, setViewedPlaylistId } = useOutletContext<{ 
+    hasUnread: boolean;
+    viewedPlaylistId: string | null;
+    setViewedPlaylistId: (id: string) => void;
+  }>();
   const { user } = useAuth();
   const { server, resolvedId, loading: serverLoading } = useServer(serverId);
 
   useEffect(() => {
-    // Only redirect if the server object we have matches the current serverId/slug
-    // This prevents stale server data from triggering a redirect during transitions
     const isCurrentServer = server && (server.id === serverId || server.slug === serverId);
-
     if (isCurrentServer && server.slug && serverId !== server.slug) {
       navigate(`/server/${server.slug}`, { replace: true });
     }
   }, [server, serverId, navigate]);
 
+  // Migration logic
+  useEffect(() => {
+    if (resolvedId && server?.ownerId) {
+      migrateQueueToPlaylist(resolvedId, server.ownerId).catch(console.error);
+    }
+  }, [resolvedId, server?.ownerId]);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
-  const { queue, loading: queueLoading, removeItem } = useQueue(resolvedId || undefined);
+
+  const { playlists, loading: playlistsLoading } = usePlaylists(resolvedId);
+
   const isDJ = !!user && !!server && server.roles?.[user.uid] === 'dj';
   const isOwner = !!user && !!server && server.ownerId === user.uid;
+  
   const { playbackState } = usePlaybackSync(resolvedId || undefined, isDJ, null, true);
+  const activePlaylistId = playbackState?.playlistId || server?.activePlaylistId || null;
+  const viewedPlaylist = playlists.find(p => p.id === viewedPlaylistId) || playlists.find(p => p.id === activePlaylistId) || playlists[0];
 
   useEffect(() => {
     if (server?.name) {
@@ -55,24 +61,7 @@ export default function ServerView() {
     }
   }, [server?.name, playbackState?.title, playbackState?.playing, hasUnread]);
 
-  const loading = serverLoading || queueLoading;
-
-  const playTrack = (item: any) => {
-    if (!isDJ || !resolvedId) return;
-    update(ref(rtdb, `playback/${resolvedId}`), {
-      trackId: item.id,
-      source: item.source,
-      sourceId: item.sourceId,
-      title: item.title,
-      thumbnail: item.thumbnail,
-      position: 0,
-      playing: true,
-      updatedAt: Date.now(),
-      djId: user.uid
-    });
-  };
-
-  const quote = EMPTY_QUOTES[Math.floor(Date.now() / 86400000) % EMPTY_QUOTES.length];
+  const loading = serverLoading || playlistsLoading;
 
   if (serverLoading) {
     return (
@@ -154,136 +143,35 @@ export default function ServerView() {
         </div>
       </header>
 
-      {/* Queue List */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-        {loading ? (
-          <div className="animate-pulse space-y-4">
-             {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-16 w-full bg-bg-3 opacity-50" />)}
-          </div>
-        ) : queue.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-             <p className="font-serif text-2xl italic text-text-3 mb-4 max-w-sm leading-relaxed">"{quote}"</p>
-             <div className="w-12 h-px bg-rule" />
-          </div>
+      <div className="flex flex-1 overflow-hidden">
+        {/* PlaylistSidebar is now in ServerList (global sidebar) */}
+        
+        {viewedPlaylist ? (
+          <TrackListPanel 
+            serverId={resolvedId} 
+            playlist={viewedPlaylist} 
+            activePlaylistId={activePlaylistId} 
+            isDJ={isDJ} 
+          />
         ) : (
-          <div className="space-y-12">
-            {/* Now Playing Section */}
-            {queue.find(item => item.id === playbackState?.trackId) && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">Now Playing</h3>
-                  <div className="h-px flex-1 mx-4 bg-accent/20" />
-                </div>
-                {queue.filter(item => item.id === playbackState?.trackId).map((item) => (
-                  <div 
-                    key={item.id}
-                    onClick={() => playTrack(item)}
-                    className={`group relative flex flex-col md:flex-row items-center gap-6 md:gap-8 border border-rule bg-bg-2 p-4 md:p-6 transition-all 
-                      ${isDJ ? 'cursor-pointer hover:bg-bg-3' : 'cursor-default'}
-                    `}
-                  >
-                    <div className="relative h-40 md:h-48 w-full md:w-48 shrink-0 bg-bg-3 overflow-hidden shadow-2xl">
-                      <img src={item.thumbnail} alt="" className="h-full w-full object-cover animate-in fade-in zoom-in-95 duration-1000" />
-                      <div className="absolute inset-0 flex items-center justify-center bg-bg/40 backdrop-blur-[2px]">
-                        <WaveformBars isPlaying={playbackState?.playing || false} />
-                      </div>
-                    </div>
-                    
-                    <div className="flex-1 space-y-4 text-center md:text-left overflow-hidden">
-                      <div className="space-y-1">
-                        <p className="font-mono text-[10px] uppercase tracking-widest text-accent">Currently Broadcasting</p>
-                        <h4 className="font-serif text-2xl md:text-4xl italic tracking-tight text-text leading-tight break-words">{item.title}</h4>
-                      </div>
-                      <div className="flex items-center justify-center md:justify-start gap-4">
-                        <span className="font-mono text-[10px] uppercase px-2 py-1 border border-rule/50 text-text-3">{item.source}</span>
-                        {playbackState?.playing && (
-                          <span className="flex items-center gap-2 font-mono text-[10px] uppercase text-accent">
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
-                            Live Sync
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeItem(item.id);
-                      }}
-                      className="absolute top-4 right-4 text-text-3 opacity-0 transition-all hover:text-accent group-hover:opacity-100"
-                    >
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
+          <div className="flex-1 flex items-center justify-center">
+            {loading ? (
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            ) : (
+              <p className="font-mono text-text-3">Select a playlist to view</p>
             )}
-
-            {/* All Tracks List */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-mono text-[10px] uppercase tracking-[0.3em] text-text-3">All Tracks</h3>
-                <div className="h-px flex-1 mx-4 bg-rule" />
-              </div>
-              
-              <div className="flex flex-col space-y-2">
-                {queue.map((item) => {
-                  const isPlaying = item.id === playbackState?.trackId;
-                  return (
-                    <div 
-                      key={item.id} 
-                      onClick={() => playTrack(item)}
-                      className={`group relative flex items-center gap-4 border p-3 transition-all
-                        ${isPlaying ? 'border-accent/50 bg-bg-3' : 'border-transparent hover:border-rule'}
-                        ${isDJ ? 'cursor-pointer hover:bg-bg-3' : 'cursor-default'}
-                      `}
-                    >
-                      <div className="relative aspect-video w-32 bg-bg-3 shrink-0 overflow-hidden">
-                        <img src={item.thumbnail} alt="" className={`h-full w-full object-cover transition-all duration-500 group-hover:opacity-100 group-hover:scale-105 ${isPlaying ? 'opacity-100' : 'opacity-80'}`} />
-                        {isPlaying && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-bg/40 backdrop-blur-[2px]">
-                            <WaveformBars isPlaying={playbackState?.playing || false} />
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <p className={`truncate font-serif text-lg italic transition-colors group-hover:text-text ${isPlaying ? 'text-accent' : 'text-text-2'}`}>
-                          {item.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="font-mono text-[10px] uppercase text-text-3">{item.source}</p>
-                          {isPlaying && <span className="font-mono text-[10px] uppercase text-accent tracking-widest">• Playing</span>}
-                        </div>
-                      </div>
-
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeItem(item.id);
-                        }}
-                        className="mr-4 h-8 w-8 flex items-center justify-center text-text-3 opacity-0 transition-all hover:text-accent group-hover:opacity-100"
-                      >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         )}
       </div>
 
-      <AddTrackModal 
-        serverId={resolvedId} 
-        isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
-      />
+      {viewedPlaylist && (
+        <AddTrackModal 
+          serverId={resolvedId} 
+          playlistId={viewedPlaylist.id}
+          isOpen={isAddModalOpen} 
+          onClose={() => setIsAddModalOpen(false)} 
+        />
+      )}
 
       {server && (
         <ServerSettingsModal 

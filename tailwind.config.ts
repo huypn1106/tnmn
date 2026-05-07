@@ -11,6 +11,7 @@ export default {
         serif: ['var(--font-serif)', 'serif'],
         mono: ['var(--font-mono)', 'monospace'],
         sans: ['var(--font-sans)', 'sans-serif'],
+        chat: ['var(--font-chat)', 'sans-serif'],
       },
       colors: {
         bg: 'var(--bg)',

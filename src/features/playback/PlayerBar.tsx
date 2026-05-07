@@ -7,8 +7,9 @@ import SoundCloudPlayer from './SoundCloudPlayer';
 import { usePlaybackSync } from './usePlaybackSync';
 import { useColorThief } from '../../shared/hooks/useColorThief';
 import WaveformBars from './WaveformBars';
-import { useQueue } from '../queue/useQueue';
 import { useServer } from '../servers/useServer';
+import { usePlaylists, useTracks, useAllTracks } from '../playlists/usePlaylists';
+import { addTrackToPlaylist } from '../playlists/trackActions';
 import { useMediaSession } from './useMediaSession';
 import { useWorkerInterval } from '../../shared/hooks/useWorkerInterval';
 
@@ -32,8 +33,16 @@ export default function PlayerBar() {
     return (navigator as any).userActivation?.hasBeenActive || false;
   });
   const isDJ = !!user && !!server && server.roles?.[user.uid] === 'dj';
-  const { queue } = useQueue(resolvedId || undefined);
   const { playbackState, emitPlayback } = usePlaybackSync(resolvedId || undefined, isDJ, player, hasInteracted);
+
+  const { tracks: playlistTracks } = useTracks(resolvedId || undefined, playbackState?.playlistId);
+  const { tracks: allServerTracks } = useAllTracks(resolvedId || undefined);
+  const tracks = playbackState?.crossPlaylist ? allServerTracks : playlistTracks;
+
+  const { playlists } = usePlaylists(resolvedId || undefined);
+  const playingPlaylist = playlists.find(p => p.id === playbackState?.playlistId);
+
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
   const isTransitioningRef = useRef(false);
 
@@ -51,7 +60,7 @@ export default function PlayerBar() {
   useColorThief((playbackState as any)?.thumbnail);
 
   const handleTrackEnd = useCallback(() => {
-    if (!isDJ || !playbackState || queue.length === 0) return;
+    if (!isDJ || !playbackState || tracks.length === 0) return;
     if (isTransitioningRef.current) return;
 
     isTransitioningRef.current = true;
@@ -66,20 +75,20 @@ export default function PlayerBar() {
     }
 
     let nextIndex = -1;
-    const currentIndex = queue.findIndex(item => item.id === playbackState.trackId);
+    const currentIndex = tracks.findIndex(item => item.id === playbackState.trackId);
 
     if (playbackState.shuffle) {
       // Simple shuffle: pick a random index that isn't the current one (if possible)
-      if (queue.length > 1) {
+      if (tracks.length > 1) {
         do {
-          nextIndex = Math.floor(Math.random() * queue.length);
+          nextIndex = Math.floor(Math.random() * tracks.length);
         } while (nextIndex === currentIndex);
       } else {
         nextIndex = 0;
       }
     } else {
       nextIndex = currentIndex + 1;
-      if (nextIndex >= queue.length) {
+      if (nextIndex >= tracks.length) {
         if (playbackState.loop === 'all') {
           nextIndex = 0;
         } else {
@@ -89,9 +98,10 @@ export default function PlayerBar() {
     }
 
     if (nextIndex !== -1) {
-      const nextTrack = queue[nextIndex];
+      const nextTrack = tracks[nextIndex];
       emitPlayback({
         trackId: nextTrack.id,
+        playlistId: (nextTrack as any).playlistId || playbackState.playlistId,
         source: nextTrack.source,
         sourceId: nextTrack.sourceId,
         thumbnail: nextTrack.thumbnail,
@@ -102,25 +112,26 @@ export default function PlayerBar() {
     } else {
       emitPlayback({ playing: false });
     }
-  }, [isDJ, playbackState, queue, emitPlayback, player]);
+  }, [isDJ, playbackState, tracks, emitPlayback, player]);
 
   const handlePrevTrack = useCallback(() => {
-    if (!isDJ || !playbackState || queue.length === 0) return;
+    if (!isDJ || !playbackState || tracks.length === 0) return;
 
-    const currentIndex = queue.findIndex(item => item.id === playbackState.trackId);
+    const currentIndex = tracks.findIndex(item => item.id === playbackState.trackId);
     let prevIndex = currentIndex - 1;
 
     if (prevIndex < 0) {
       if (playbackState.loop === 'all') {
-        prevIndex = queue.length - 1;
+        prevIndex = tracks.length - 1;
       } else {
         prevIndex = 0; // Just restart current track if no prev
       }
     }
 
-    const prevTrack = queue[prevIndex];
+    const prevTrack = tracks[prevIndex];
     emitPlayback({
       trackId: prevTrack.id,
+      playlistId: (prevTrack as any).playlistId || playbackState.playlistId,
       source: prevTrack.source,
       sourceId: prevTrack.sourceId,
       thumbnail: prevTrack.thumbnail,
@@ -128,7 +139,7 @@ export default function PlayerBar() {
       position: 0,
       playing: true,
     });
-  }, [isDJ, playbackState, queue, emitPlayback]);
+  }, [isDJ, playbackState, tracks, emitPlayback]);
 
   const toggleShuffle = () => {
     if (!isDJ) return;
@@ -141,6 +152,11 @@ export default function PlayerBar() {
     const currentMode = playbackState?.loop || 'off';
     const nextMode = modes[(modes.indexOf(currentMode) + 1) % modes.length];
     emitPlayback({ loop: nextMode });
+  };
+
+  const toggleCrossPlaylist = () => {
+    if (!isDJ) return;
+    emitPlayback({ crossPlaylist: !playbackState?.crossPlaylist });
   };
 
   // Scrubber local update loop
@@ -284,7 +300,7 @@ export default function PlayerBar() {
              <div className="w-full h-full bg-accent opacity-20" />
            )}
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 relative">
           <div className="flex items-center gap-2">
             <p className="font-serif text-xs md:text-sm italic text-text leading-tight break-words line-clamp-2 md:line-clamp-1 md:truncate">{(playbackState as any).title || 'Now Playing'}</p>
             <div className="hidden md:block shrink-0">
@@ -292,7 +308,9 @@ export default function PlayerBar() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <p className="font-mono text-[8px] uppercase text-text-3 tracking-tighter truncate max-w-[80px] md:max-w-none">Broadcasting via {playbackState.source}</p>
+            <p className="font-mono text-[8px] uppercase text-text-3 tracking-tighter truncate max-w-[80px] md:max-w-none">
+              {playingPlaylist?.name ? `Playing from: ${playingPlaylist.name}` : `Broadcasting via ${playbackState.source}`}
+            </p>
             {playbackState.playing && (
               <button 
                 onClick={() => player?.play()}
@@ -300,6 +318,49 @@ export default function PlayerBar() {
               >
                 • Sync
               </button>
+            )}
+            {user && (
+              <div className="relative">
+                <button 
+                  onClick={() => setShowAddMenu(!showAddMenu)}
+                  className="font-mono text-[8px] uppercase text-text-3 hover:text-text border border-rule px-1 ml-2"
+                >
+                  + Add
+                </button>
+                {showAddMenu && (
+                  <div className="absolute bottom-full left-0 mb-2 w-48 bg-bg-2 border border-rule shadow-xl flex flex-col z-50">
+                    <div className="px-3 py-2 border-b border-rule font-mono text-[10px] text-text-3 uppercase tracking-widest">
+                      Add to Playlist
+                    </div>
+                    <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                      {playlists.map(p => (
+                        <button 
+                          key={p.id}
+                          onClick={async () => {
+                            if (!serverId) return;
+                            try {
+                              await addTrackToPlaylist(serverId, p.id, {
+                                source: playbackState.source,
+                                sourceId: playbackState.sourceId,
+                                title: playbackState.title || '',
+                                thumbnail: playbackState.thumbnail || '',
+                                duration: playbackState.duration || 0,
+                              }, user.uid);
+                              setShowAddMenu(false);
+                            } catch (error: any) {
+                              console.error(error);
+                              alert(error.message);
+                            }
+                          }}
+                          className="w-full text-left px-3 py-2 font-serif text-[13px] hover:bg-bg-3 truncate transition-colors"
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -360,6 +421,18 @@ export default function PlayerBar() {
               {playbackState.loop === 'one' && (
                 <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center bg-accent text-[8px] font-bold text-accent-foreground rounded-full">1</span>
               )}
+            </button>
+          )}
+
+          {isDJ && (
+            <button 
+              onClick={toggleCrossPlaylist}
+              className={`transition-all ${playbackState.crossPlaylist ? 'text-accent' : 'text-text-3 hover:text-text'}`}
+              title="Cross Playlist Play"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
             </button>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { nanoid } from 'nanoid';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../app/firebase';
 import { useAuth } from '../auth/useAuth';
 
@@ -28,7 +28,26 @@ export default function CreateServerModal({ isOpen, onClose }: { isOpen: boolean
         createdAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, 'servers'), serverData);
+      const docRef = await addDoc(collection(db, 'servers'), serverData);
+
+      const playlistRef = collection(db, 'servers', docRef.id, 'playlists');
+      const newPlaylistDoc = await addDoc(playlistRef, {
+        name: 'Queue',
+        description: null,
+        coverURL: null,
+        createdBy: user.uid,
+        createdAt: serverTimestamp(),
+        trackCount: 0,
+        totalDuration: 0,
+        source: 'manual',
+        llmPrompt: null,
+        order: 1000,
+      });
+
+      await updateDoc(doc(db, 'servers', docRef.id), {
+        defaultPlaylistId: newPlaylistDoc.id,
+        activePlaylistId: newPlaylistDoc.id,
+      });
       onClose();
       setName('');
       setCoverURL('');

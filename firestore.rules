@@ -39,6 +39,16 @@ service cloud.firestore {
       match /messages/{msgId} {
         allow read, write: if isMember(serverId);
       }
+
+      // Playlists subcollection
+      match /playlists/{playlistId} {
+        allow read, write: if isMember(serverId);
+        
+        // Tracks subcollection
+        match /tracks/{trackId} {
+          allow read, write: if isMember(serverId);
+        }
+      }
     }
   }
 }
