@@ -47,7 +47,7 @@ export default function CreatePlaylistModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-md border border-rule bg-bg-2 p-8 shadow-2xl">
-        <h2 className="mb-6 font-serif text-3xl italic">New Playlist</h2>
+        <h2 className="mb-6 font-serif text-3xl ">New Playlist</h2>
         
         <div className="flex gap-2 mb-6 border-b border-rule pb-4">
           <button 

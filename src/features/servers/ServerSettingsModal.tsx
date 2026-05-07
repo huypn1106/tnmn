@@ -91,7 +91,7 @@ export default function ServerSettingsModal({ isOpen, onClose, server }: ServerS
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-md border border-rule bg-bg-2 p-8 shadow-2xl">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="font-serif text-3xl italic">Server Settings</h2>
+          <h2 className="font-serif text-3xl ">Server Settings</h2>
           <button onClick={onClose} className="text-text-3 hover:text-white">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

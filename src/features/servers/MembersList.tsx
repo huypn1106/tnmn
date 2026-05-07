@@ -74,7 +74,7 @@ export default function MembersList() {
 
       <div className="space-y-3">
         {activeMembers.length === 0 ? (
-          <p className="font-serif text-[10px] italic text-text-3 opacity-40 px-1 tracking-wide leading-relaxed">
+          <p className="font-serif text-[10px] text-text-3 opacity-40 px-1 tracking-wide leading-relaxed">
             "The silence is profound, waiting for a presence."
           </p>
         ) : (

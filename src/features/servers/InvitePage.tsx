@@ -74,7 +74,7 @@ export default function InvitePage() {
   if (error) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-bg text-center px-4">
-        <h2 className="font-serif text-3xl italic text-text mb-4">Oops.</h2>
+        <h2 className="font-serif text-3xl text-text mb-4">Oops.</h2>
         <p className="font-mono text-xs uppercase tracking-widest text-text-3 mb-8">{error}</p>
         <button onClick={() => navigate('/')} className="border border-rule px-8 py-3 font-mono text-xs uppercase">Go Home</button>
       </div>
@@ -86,7 +86,7 @@ export default function InvitePage() {
       <div className="max-w-md space-y-8">
         <div className="space-y-2">
           <p className="font-mono text-[10px] uppercase tracking-widest text-text-3">You've been invited to join</p>
-          <h1 className="font-serif text-5xl italic text-text">{server.name}</h1>
+          <h1 className="font-serif text-5xl text-text">{server.name}</h1>
         </div>
 
         {server.coverURL && (

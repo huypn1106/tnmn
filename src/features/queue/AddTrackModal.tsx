@@ -112,8 +112,8 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-2xl border border-rule bg-bg-2 p-8 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="font-serif text-3xl italic">Add Track</h2>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-text-3 italic">URL or Search</p>
+          <h2 className="font-serif text-3xl ">Add Track</h2>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-3 ">URL or Search</p>
         </div>
 
         <div className="flex flex-col flex-1 min-h-0 space-y-6">
@@ -151,7 +151,7 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
                   <img src={result.thumbnail} alt={result.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-serif italic text-sm line-clamp-2" dangerouslySetInnerHTML={{ __html: result.title }} />
+                  <h4 className="font-serif text-sm line-clamp-2" dangerouslySetInnerHTML={{ __html: result.title }} />
                   <p className="font-mono text-[10px] text-text-3 mt-1">{result.channelTitle}</p>
                 </div>
               </button>

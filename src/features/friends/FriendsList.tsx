@@ -26,7 +26,7 @@ export default function FriendsList() {
           <h3 className="font-mono text-[10px] uppercase tracking-widest text-accent">Requests ({requests.length})</h3>
           {requests.map((req) => (
             <div key={req.from} className="flex items-center justify-between bg-accent-dim p-2">
-              <span className="font-mono text-[9px] uppercase text-text italic">Pending</span>
+              <span className="font-mono text-[9px] uppercase text-text ">Pending</span>
               <div className="flex gap-2">
                 <button onClick={() => respondToRequest(req, true)} className="text-white hover:text-accent transition-colors">
                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
@@ -44,7 +44,7 @@ export default function FriendsList() {
       <div className="space-y-3">
         <h3 className="font-mono text-[10px] uppercase tracking-widest text-text-3">Friends</h3>
         {friends.length === 0 ? (
-          <p className="font-serif text-xs italic text-text-3">"The garden is empty."</p>
+          <p className="font-serif text-xs text-text-3">"The garden is empty."</p>
         ) : (
           friends.map((friend) => {
             const status = presence[friend.uid];

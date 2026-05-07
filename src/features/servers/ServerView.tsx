@@ -1,6 +1,5 @@
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import AddTrackModal from '../queue/AddTrackModal';
 import { usePlaybackSync } from '../playback/usePlaybackSync';
 
 import { useAuth } from '../auth/useAuth';
@@ -10,6 +9,7 @@ import { useServer } from './useServer';
 import TrackListPanel from '../playlists/TrackListPanel';
 import { usePlaylists } from '../playlists/usePlaylists';
 import { migrateQueueToPlaylist } from '../playlists/migrateQueue';
+import AddTrackModal from '../queue/AddTrackModal';
 
 export default function ServerView() {
   const { serverId } = useParams<{ serverId: string }>();
@@ -36,8 +36,8 @@ export default function ServerView() {
     }
   }, [resolvedId, server?.ownerId]);
 
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
 
   const { playlists, loading: playlistsLoading } = usePlaylists(resolvedId);
@@ -75,7 +75,7 @@ export default function ServerView() {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center bg-[radial-gradient(circle_at_center,var(--bg-2)_0%,transparent_70%)]">
         <div className="max-w-md space-y-6">
-          <h1 className="font-serif text-5xl italic text-text opacity-10 animate-pulse">Select a room.</h1>
+          <h1 className="font-serif text-5xl text-text opacity-10 animate-pulse">Select a room.</h1>
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-3">Your circle is waiting for the signal</p>
         </div>
       </div>
@@ -86,14 +86,26 @@ export default function ServerView() {
     <div className="flex h-full flex-col">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-rule p-4 md:p-8">
-        <div className="space-y-1">
-          <h2 className="font-serif text-3xl italic tracking-tight leading-none">{server?.name || 'Queue'}</h2>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-text-3">
+        <div className="space-y-2">
+          <h2 className="font-serif text-5xl tracking-tighter leading-none">{server?.name || 'Queue'}</h2>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-3">
             {server?.slug ? `/server/${server.slug}` : 'Session Dynamics'}
           </p>
         </div>
         
         <div className="flex items-center gap-2 md:gap-4">
+          {isDJ && viewedPlaylist && (
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 bg-accent px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-accent-foreground transition-all hover:bg-accent/90 hover:scale-105 active:scale-95"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden md:inline">Add Track</span>
+            </button>
+          )}
+          
           <div className="flex items-center gap-1 border-r border-rule pr-2 md:gap-2 md:pr-4">
             {isOwner && (
               <button 
@@ -131,15 +143,6 @@ export default function ServerView() {
               )}
             </div>
           </div>
-
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="group relative border border-rule bg-bg-2 px-4 py-2 md:px-6 md:py-3 font-mono text-[10px] uppercase tracking-widest text-text transition-all hover:bg-bg-3"
-          >
-            <span className="hidden md:inline">Add Track</span>
-            <span className="md:hidden">+ Track</span>
-            <div className="absolute inset-x-0 -bottom-px h-px bg-accent opacity-0 transition-opacity group-hover:opacity-100" />
-          </button>
         </div>
       </header>
 
@@ -164,20 +167,20 @@ export default function ServerView() {
         )}
       </div>
 
-      {viewedPlaylist && (
-        <AddTrackModal 
-          serverId={resolvedId} 
-          playlistId={viewedPlaylist.id}
-          isOpen={isAddModalOpen} 
-          onClose={() => setIsAddModalOpen(false)} 
-        />
-      )}
-
       {server && (
         <ServerSettingsModal 
           isOpen={isSettingsOpen} 
           onClose={() => setIsSettingsOpen(false)} 
           server={server} 
+        />
+      )}
+
+      {resolvedId && viewedPlaylist && (
+        <AddTrackModal 
+          serverId={resolvedId} 
+          playlistId={viewedPlaylist.id}
+          isOpen={isAddModalOpen} 
+          onClose={() => setIsAddModalOpen(false)} 
         />
       )}
     </div>

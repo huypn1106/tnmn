@@ -255,7 +255,7 @@ export default function PlayerBar() {
   if (!playbackState || !serverId) {
     return (
       <div className="h-full flex items-center px-6">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-text-3 italic">Silence is golden</p>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-text-3">Silence is golden</p>
       </div>
     );
   }
@@ -302,7 +302,7 @@ export default function PlayerBar() {
         </div>
         <div className="min-w-0 flex-1 relative">
           <div className="flex items-center gap-2">
-            <p className="font-serif text-xs md:text-sm italic text-text leading-tight break-words line-clamp-2 md:line-clamp-1 md:truncate">{(playbackState as any).title || 'Now Playing'}</p>
+            <p className="font-serif text-xs md:text-sm text-text leading-tight break-words line-clamp-2 md:line-clamp-1 md:truncate">{(playbackState as any).title || 'Now Playing'}</p>
             <div className="hidden md:block shrink-0">
               <WaveformBars isPlaying={playbackState.playing} />
             </div>

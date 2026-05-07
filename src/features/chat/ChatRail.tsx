@@ -26,7 +26,7 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
   if (!serverId) {
     return (
       <div className="flex flex-1 flex-col p-4 opacity-20 items-center justify-center text-center">
-        <p className="font-mono text-[10px] uppercase tracking-widest italic">Signal Lost</p>
+        <p className="font-mono text-[10px] uppercase tracking-widest ">Signal Lost</p>
       </div>
     );
   }
@@ -35,7 +35,7 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
     <div className="flex flex-1 flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-rule shrink-0">
-        <h3 className="font-mono text-[10px] uppercase tracking-widest text-text-3 italic">Real-time Feed</h3>
+        <h3 className="font-mono text-[10px] uppercase tracking-widest text-text-3 ">Real-time Feed</h3>
       </div>
 
       {/* Messages */}
@@ -47,12 +47,12 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
           <div key={msg.id} className={`flex flex-col ${msg.userId === user?.uid ? 'items-end' : 'items-start'}`}>
             <div className="flex items-center gap-2 mb-1">
               {msg.userId !== user?.uid && <span className="font-chat text-[10px] font-bold text-text-2">{msg.displayName}</span>}
-              <span className="font-mono text-[8px] text-text-3 italic opacity-50">
+              <span className="font-mono text-[8px] text-text-3 opacity-50">
                 {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
               </span>
             </div>
             <div className={`max-w-[90%] px-3 py-2 text-xs font-chat leading-relaxed transition-all ${
-              msg.userId === user?.uid ? 'bg-accent text-accent-foreground italic shadow-lg shadow-accent/10' : 'bg-bg-3 text-text-2 border-l border-accent/20'
+              msg.userId === user?.uid ? 'bg-accent text-accent-foreground shadow-lg shadow-accent/10' : 'bg-bg-3 text-text-2 border-l border-accent/20'
             }`}>
               {msg.text}
             </div>

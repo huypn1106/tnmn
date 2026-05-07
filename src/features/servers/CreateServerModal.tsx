@@ -61,7 +61,7 @@ export default function CreateServerModal({ isOpen, onClose }: { isOpen: boolean
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-md border border-rule bg-bg-2 p-8 shadow-2xl">
-        <h2 className="mb-6 font-serif text-3xl italic">New Server</h2>
+        <h2 className="mb-6 font-serif text-3xl ">New Server</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-1">
             <label className="font-mono text-[10px] uppercase tracking-widest text-text-3">Server Name</label>

@@ -64,10 +64,6 @@ export default function ServerList({ onCloseMobile, viewedPlaylistId, setViewedP
           ) : (
             servers.map((server) => {
               const isActive = routeId === server.slug || routeId === server.id;
-              // Check if this specific server is currently playing
-              // Note: we'd need playback state for EACH server to be perfect, 
-              // but we can at least show it for the CURRENTLY RESOLVED server.
-              const isPlaying = isActive && playbackState?.playing;
 
               return (
                 <NavLink
@@ -92,16 +88,6 @@ export default function ServerList({ onCloseMobile, viewedPlaylistId, setViewedP
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-bg-3 font-mono text-xs font-bold uppercase text-text-3">
                         {server.name.charAt(0)}
-                      </div>
-                    )}
-                    
-                    {isPlaying && (
-                      <div className="absolute inset-0 bg-accent/20 backdrop-blur-[1px] flex items-center justify-center">
-                        <div className="flex items-end gap-[2px] h-3">
-                          <div className="w-1 bg-white animate-[waveform_1s_ease-in-out_infinite] h-[40%]" />
-                          <div className="w-1 bg-white animate-[waveform_1.2s_ease-in-out_infinite_0.2s] h-[80%]" />
-                          <div className="w-1 bg-white animate-[waveform_0.9s_ease-in-out_infinite_0.4s] h-[60%]" />
-                        </div>
                       </div>
                     )}
                   </div>

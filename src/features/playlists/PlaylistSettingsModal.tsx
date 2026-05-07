@@ -52,7 +52,7 @@ export default function PlaylistSettingsModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-md border border-rule bg-bg-2 p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-        <h2 className="mb-6 font-serif text-3xl italic">Playlist Settings</h2>
+        <h2 className="mb-6 font-serif text-3xl ">Playlist Settings</h2>
         
         <form onSubmit={handleSave} className="space-y-6">
           <div className="space-y-1">

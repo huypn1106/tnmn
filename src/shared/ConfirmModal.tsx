@@ -29,7 +29,7 @@ export default function ConfirmModal({
       />
       
       <div className="relative w-full max-w-sm border border-rule bg-bg-2 p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-        <h2 className="mb-4 font-serif text-3xl italic tracking-tight">{title}</h2>
+        <h2 className="mb-4 font-serif text-3xl tracking-tight">{title}</h2>
         <p className="mb-8 font-mono text-xs leading-relaxed text-text-2 uppercase tracking-wide">
           {message}
         </p>

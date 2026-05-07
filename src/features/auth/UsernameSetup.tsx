@@ -61,7 +61,7 @@ export default function UsernameSetup() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="space-y-2 text-center">
-          <h2 className="font-serif text-3xl italic text-text">Choose your handle</h2>
+          <h2 className="font-serif text-3xl text-text">Choose your handle</h2>
           <p className="font-mono text-xs uppercase tracking-widest text-text-3">
             This is how your friends will find you
           </p>

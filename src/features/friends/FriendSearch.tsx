@@ -59,7 +59,7 @@ export default function FriendSearch() {
               <span className="font-sans text-xs font-medium text-text-2">{result.username}</span>
             </div>
             {result.friendRequests?.some((r: any) => r.from === user?.uid) ? (
-              <span className="font-mono text-[8px] uppercase tracking-tighter text-text-3 italic">Request Sent</span>
+              <span className="font-mono text-[8px] uppercase tracking-tighter text-text-3 ">Request Sent</span>
             ) : (
               <button
                 onClick={async () => {

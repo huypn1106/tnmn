@@ -47,7 +47,7 @@ export default function RenamePlaylistModal({
       />
       
       <div className="relative w-full max-w-sm border border-rule bg-bg-2 p-8 shadow-2xl animate-in zoom-in-95 duration-200">
-        <h2 className="mb-6 font-serif text-3xl italic tracking-tight">Rename Playlist</h2>
+        <h2 className="mb-6 font-serif text-3xl tracking-tight">Rename Playlist</h2>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-1">

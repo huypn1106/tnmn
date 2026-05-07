@@ -33,7 +33,7 @@ export default function SignInPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-4 text-center">
       <div className="max-w-md space-y-8">
-        <h1 className="font-serif text-6xl tracking-tight italic text-text sm:text-7xl">
+        <h1 className="font-serif text-6xl tracking-tight text-text sm:text-7xl">
           Listen <br /> Together
         </h1>
         <p className="font-mono text-sm uppercase tracking-widest text-text-3">
