@@ -19,7 +19,7 @@ export default function ServerSettingsModal({ isOpen, onClose, server }: ServerS
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [members, setMembers] = useState<{ uid: string; displayName: string; username: string }>(([] as any));
+  const [members, setMembers] = useState<{ uid: string; displayName: string; username: string }[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
