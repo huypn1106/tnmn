@@ -5,6 +5,7 @@ import { removeTrackFromPlaylist } from './trackActions';
 import { useAuth } from '../auth/useAuth';
 import { setActivePlaylist, deletePlaylist } from './playlistActions';
 import PlaylistSettingsModal from './PlaylistSettingsModal';
+import AudioVisualizer from '../playback/AudioVisualizer';
 import { useState, useEffect, useRef } from 'react';
 import { rtdb } from '../../app/firebase';
 import { ref, update } from 'firebase/database';
@@ -185,6 +186,8 @@ export default function TrackListPanel({
                       {playbackState.title}
                     </h4>
                   </div>
+                  
+                  <AudioVisualizer isPlaying={playbackState.playing || false} />
                   
                   <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3">
