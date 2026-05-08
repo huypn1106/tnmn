@@ -19,7 +19,7 @@ export default function ServerSettingsModal({ isOpen, onClose, server }: ServerS
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [members, setMembers] = useState<{ uid: string; displayName: string }[]>([]);
+  const [members, setMembers] = useState<{ uid: string; displayName: string; username: string }>(([] as any));
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,10 +36,11 @@ export default function ServerSettingsModal({ isOpen, onClose, server }: ServerS
         const profiles = await Promise.all(
           server.members.map(async (uid) => {
             const snap = await getDoc(doc(db, 'users', uid));
-            return { uid, displayName: snap.exists() ? snap.data().displayName : 'Unknown' };
+            const data = snap.exists() ? snap.data() : { displayName: 'Unknown', username: 'unknown' };
+            return { uid, displayName: data.displayName, username: data.username };
           })
         );
-        setMembers(profiles);
+        setMembers(profiles as any);
       };
       fetchMembers();
     }
@@ -141,9 +142,9 @@ export default function ServerSettingsModal({ isOpen, onClose, server }: ServerS
           <div className="space-y-3">
             <label className="font-mono text-[10px] uppercase tracking-widest text-text-3">Member Permissions</label>
             <div className="max-h-48 overflow-y-auto space-y-2 border border-rule/50 p-3 bg-bg-3/30 custom-scrollbar">
-              {members.map((m) => (
+              {members.map((m: any) => (
                 <div key={m.uid} className="flex items-center justify-between gap-4 py-1">
-                  <span className="truncate font-sans text-xs text-text-2">{m.displayName}</span>
+                  <span className="truncate font-sans text-xs text-text-2">@{m.username || m.displayName}</span>
                   <select
                     value={roles[m.uid] || 'guest'}
                     onChange={(e) => setRoles({ ...roles, [m.uid]: e.target.value as 'dj' | 'guest' })}

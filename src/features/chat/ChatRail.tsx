@@ -46,7 +46,7 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
         {messages.map((msg) => (
           <div key={msg.id} className={`flex flex-col ${msg.userId === user?.uid ? 'items-end' : 'items-start'}`}>
             <div className="flex items-center gap-2 mb-1">
-              {msg.userId !== user?.uid && <span className="font-chat text-[10px] font-bold text-text-2">{msg.displayName}</span>}
+              {msg.userId !== user?.uid && <span className="font-chat text-[10px] font-bold text-text-2">@{msg.username}</span>}
               <span className="font-mono text-[8px] text-text-3 opacity-50">
                 {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}
               </span>

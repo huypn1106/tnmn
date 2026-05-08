@@ -7,6 +7,7 @@ import { useServer } from './useServer';
 
 interface Member {
   uid: string;
+  username: string;
   displayName: string;
   photoURL: string;
 }
@@ -28,7 +29,7 @@ export default function MembersList() {
       const profiles = await Promise.all(
         server.members.map(async (uid) => {
           const userSnap = await getDoc(doc(db, 'users', uid));
-          const profile = userSnap.exists() ? userSnap.data() : { displayName: 'Unknown', photoURL: '' };
+          const profile = userSnap.exists() ? userSnap.data() : { displayName: 'Unknown', username: 'unknown', photoURL: '' };
           return { uid, ...profile, role: currentRoles[uid] || 'guest' } as any;
         })
       );
@@ -88,7 +89,7 @@ export default function MembersList() {
                     <img src={member.photoURL} alt="" className="h-full w-full rounded-lg object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-text-3 uppercase">
-                      {member.displayName.charAt(0)}
+                      {(member.username || member.displayName).charAt(0)}
                     </div>
                   )}
                 </div>
@@ -104,7 +105,7 @@ export default function MembersList() {
                 <span className={`truncate font-sans text-[12px] font-medium tracking-wide transition-colors ${
                   member.role === 'dj' ? 'text-accent' : 'text-text group-hover:text-white'
                 }`}>
-                  {member.displayName}
+                  @{member.username || member.displayName}
                 </span>
                 <div className="flex items-center gap-1.5 opacity-50 transition-opacity group-hover:opacity-100">
                   <span className={`h-1 w-1 rounded-full ${member.role === 'dj' ? 'bg-accent' : 'bg-text-3'}`} />

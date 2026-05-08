@@ -5,9 +5,9 @@ import { useAuth } from '../auth/useAuth';
 
 export interface FriendProfile {
   uid: string;
+  username: string;
   displayName: string;
   photoURL: string;
-  username: string;
 }
 
 export interface FriendRequest {

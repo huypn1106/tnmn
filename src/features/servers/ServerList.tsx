@@ -6,6 +6,7 @@ import CreateServerModal from './CreateServerModal';
 import { useServer } from './useServer';
 import PlaylistSidebar from '../playlists/PlaylistSidebar';
 import { usePlaybackSync } from '../playback/usePlaybackSync';
+import UserSettingsModal from '../auth/UserSettingsModal';
 
 interface ServerListProps {
   onCloseMobile?: () => void;
@@ -15,8 +16,9 @@ interface ServerListProps {
 
 export default function ServerList({ viewedPlaylistId, setViewedPlaylistId }: ServerListProps) {
   const { servers, loading } = useServers();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   
   const { serverId: routeId } = useParams<{ serverId: string }>();
   const { server, resolvedId } = useServer(routeId);
@@ -132,19 +134,22 @@ export default function ServerList({ viewedPlaylistId, setViewedPlaylistId }: Se
       )}
 
       <div className="mt-auto p-4">
-        <div className="flex items-center gap-3 rounded-2xl bg-bg-3/30 p-3 ring-1 ring-rule transition-all hover:bg-bg-3/50">
-           <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-rule bg-bg-3">
-             {user?.photoURL ? (
-               <img src={user.photoURL} alt="" className="h-full w-full object-cover" />
+        <div 
+          onClick={() => setIsUserModalOpen(true)}
+          className="flex cursor-pointer items-center gap-3 rounded-2xl bg-bg-3/30 p-3 ring-1 ring-rule transition-all hover:bg-bg-3/50 group"
+        >
+           <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-rule bg-bg-3 transition-transform group-hover:scale-105">
+             {profile?.photoURL || user?.photoURL ? (
+               <img src={profile?.photoURL || user?.photoURL || ''} alt="" className="h-full w-full object-cover" />
              ) : (
                <div className="flex h-full w-full items-center justify-center bg-accent/10 text-accent font-bold uppercase">
-                 {user?.displayName?.charAt(0) || 'U'}
+                 {(profile?.username || user?.displayName || 'U').charAt(0)}
                </div>
              )}
            </div>
            <div className="flex min-w-0 flex-1 flex-col">
              <span className="truncate font-sans text-[13px] font-bold text-text transition-colors group-hover:text-white">
-               {user?.displayName || 'Guest User'}
+               @{profile?.username || user?.displayName || 'Guest User'}
              </span>
              <div className="flex items-center gap-1.5">
                <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
@@ -152,8 +157,11 @@ export default function ServerList({ viewedPlaylistId, setViewedPlaylistId }: Se
              </div>
            </div>
            <button 
-             onClick={() => {/* Sign out logic if needed */}}
-             className="text-text-3 hover:text-white transition-colors"
+             onClick={(e) => {
+               e.stopPropagation();
+               setIsUserModalOpen(true);
+             }}
+             className="text-text-3 hover:text-white transition-colors p-1"
            >
              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -164,6 +172,7 @@ export default function ServerList({ viewedPlaylistId, setViewedPlaylistId }: Se
       </div>
 
       <CreateServerModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <UserSettingsModal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} />
     </div>
   );
 }

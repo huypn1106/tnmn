@@ -60,7 +60,7 @@ export default function FriendsList() {
                   )}
                 </div>
                 <div className="flex flex-col truncate">
-                  <span className="font-sans text-xs font-bold text-text-2 truncate">{friend.username}</span>
+                  <span className="font-sans text-xs font-bold text-text-2 truncate">@{friend.username}</span>
                   <span className="font-mono text-[8px] uppercase text-text-3 truncate">
                     {isOnline ? (status.activeServerId ? 'Synchronizing' : 'Online') : 'Stationary'}
                   </span>

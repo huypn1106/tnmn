@@ -56,7 +56,7 @@ export default function FriendSearch() {
           <div key={result.uid} className="flex items-center justify-between bg-bg-3/50 p-2 border border-rule/50">
             <div className="flex items-center gap-2">
               <div className="h-6 w-6 bg-accent opacity-20" />
-              <span className="font-sans text-xs font-medium text-text-2">{result.username}</span>
+              <span className="font-sans text-xs font-medium text-text-2">@{result.username}</span>
             </div>
             {result.friendRequests?.some((r: any) => r.from === user?.uid) ? (
               <span className="font-mono text-[8px] uppercase tracking-tighter text-text-3 ">Request Sent</span>

@@ -7,13 +7,13 @@ export interface Message {
   id: string;
   text: string;
   userId: string;
-  displayName: string;
+  username: string;
   photoURL: string;
   createdAt: any;
 }
 
 export function useChat(serverId: string | undefined, onNewMessage?: () => void) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const isInitialLoad = useRef(true);
@@ -33,10 +33,14 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Message[];
+      const msgs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          username: data.username || data.displayName || 'Unknown'
+        };
+      }) as Message[];
       
       const reversedMsgs = [...msgs].reverse();
       setMessages(reversedMsgs);
@@ -65,7 +69,7 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
     await addDoc(collection(db, 'servers', serverId, 'messages'), {
       text,
       userId: user.uid,
-      displayName: user.displayName,
+      username: profile?.username || user.displayName || 'Unknown',
       photoURL: user.photoURL,
       createdAt: serverTimestamp()
     });
