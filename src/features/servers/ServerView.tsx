@@ -10,6 +10,7 @@ import TrackListPanel from '../playlists/TrackListPanel';
 import { usePlaylists } from '../playlists/usePlaylists';
 import { migrateQueueToPlaylist } from '../playlists/migrateQueue';
 import AddTrackModal from '../queue/AddTrackModal';
+import AudioVisualizer from '../playback/AudioVisualizer';
 
 export default function ServerView() {
   const { serverId } = useParams<{ serverId: string }>();
@@ -86,11 +87,14 @@ export default function ServerView() {
     <div className="flex h-full flex-col">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-rule p-4 md:p-8">
-        <div className="space-y-2">
-          <h2 className="font-serif text-5xl tracking-tighter leading-none">{server?.name || 'Queue'}</h2>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-text-3">
-            {server?.slug ? `/server/${server.slug}` : 'Session Dynamics'}
-          </p>
+        <div className="space-y-4 flex-1">
+          <div className="space-y-2">
+            <h2 className="font-serif text-5xl tracking-tighter leading-none">{server?.name || 'Queue'}</h2>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+              {server?.slug ? `/server/${server.slug}` : 'Session Dynamics'}
+            </p>
+          </div>
+          <AudioVisualizer isPlaying={playbackState?.playing || false} />
         </div>
         
         <div className="flex items-center gap-2 md:gap-4">
