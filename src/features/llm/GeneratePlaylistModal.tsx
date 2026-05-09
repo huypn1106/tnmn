@@ -7,9 +7,7 @@ import type { ResolvedTrack } from './resolveTrack';
 import { safeParseJSON } from './llmUtils';
 import type { LLMTrack } from './llmUtils';
 import { incrementAndCheck, getUsage } from './creditGuard';
-import { addTrackToPlaylist, addMultipleTracksToPlaylist } from '../playlists/trackActions';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../../app/firebase';
+import { addMultipleTracksToPlaylist } from '../playlists/trackActions';
 
 const LOADING_COPY = [
   'Curating your playlist…',
