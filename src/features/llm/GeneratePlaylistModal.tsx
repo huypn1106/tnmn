@@ -91,7 +91,7 @@ export default function GeneratePlaylistModal({ serverId, playlistId, isOpen, on
 
     const apiKey = import.meta.env.VITE_NVIDIA_API_KEY;
     if (!apiKey) {
-      setError('NVIDIA API key is not configured. Add VITE_NVIDIA_API_KEY to your .env.local file.');
+      setError('NVIDIA API key is not configured. In production, check your Cloudflare Pages environment variables.');
       return;
     }
 
@@ -145,7 +145,7 @@ export default function GeneratePlaylistModal({ serverId, playlistId, isOpen, on
       if (err?.name === 'AbortError') return;
       console.error('[GeneratePlaylist] Error:', err);
       if (err?.message?.includes('API key') || err?.message?.includes('401')) {
-        setError('Invalid or missing NVIDIA API key. Check your VITE_NVIDIA_API_KEY in .env.local.');
+        setError('Invalid or missing NVIDIA API key. Check your environment variables (Cloudflare Pages or .env.local).');
       } else if (err?.message?.includes('429') || err?.message?.includes('rate')) {
         setError('NVIDIA rate limit hit. Wait a moment and try again.');
       } else if (err?.message?.includes('parse') || err?.message?.includes('JSON')) {

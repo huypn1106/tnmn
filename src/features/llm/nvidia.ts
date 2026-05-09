@@ -1,4 +1,6 @@
-export const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
+export const NVIDIA_BASE_URL = import.meta.env.PROD 
+  ? 'https://integrate.api.nvidia.com/v1' 
+  : '/api/nvidia';
 export const NVIDIA_MODEL = 'meta/llama-3.3-70b-instruct';
 
 export async function nvidiaChat(
@@ -8,7 +10,7 @@ export async function nvidiaChat(
   const apiKey = import.meta.env.VITE_NVIDIA_API_KEY;
   
   if (!apiKey) {
-    throw new Error('NVIDIA API Key is missing. Please add VITE_NVIDIA_API_KEY to your environment.');
+    throw new Error('NVIDIA API Key is missing. If you are in production, ensure VITE_NVIDIA_API_KEY is added to your Cloudflare Pages environment variables.');
   }
 
   const response = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
