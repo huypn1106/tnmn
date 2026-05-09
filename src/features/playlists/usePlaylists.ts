@@ -13,6 +13,7 @@ export function usePlaylists(serverId: string | undefined) {
       setLoading(false);
       return;
     }
+    setLoading(true);
     const ref = collection(db, 'servers', serverId, 'playlists');
     const q = query(ref, orderBy('order', 'asc'));
     const unsubscribe = onSnapshot(q, (snap) => {
@@ -35,6 +36,7 @@ export function useTracks(serverId: string | undefined, playlistId: string | nul
       setLoading(false);
       return;
     }
+    setLoading(true);
     const ref = collection(db, 'servers', serverId, 'playlists', playlistId, 'tracks');
     const q = query(ref, orderBy('order', 'asc'));
     const unsubscribe = onSnapshot(q, (snap) => {

@@ -12,6 +12,7 @@ import { ref, update } from 'firebase/database';
 import { useOutletContext } from 'react-router-dom';
 import type { Playlist } from './types';
 import ConfirmModal from '../../shared/ConfirmModal';
+import { RecommendationsPanel } from '../llm/RecommendationsPanel';
 
 export default function TrackListPanel({ 
   serverId, 
@@ -298,6 +299,9 @@ export default function TrackListPanel({
           </div>
         )}
       </div>
+
+      <RecommendationsPanel serverId={serverId} playlistId={playlist.id} />
+
       {isSettingsOpen && (
         <PlaylistSettingsModal 
           serverId={serverId}
@@ -306,7 +310,6 @@ export default function TrackListPanel({
           onClose={() => setIsSettingsOpen(false)}
         />
       )}
-      
 
 
       {trackToRemove && (

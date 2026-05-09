@@ -10,6 +10,7 @@ import TrackListPanel from '../playlists/TrackListPanel';
 import { usePlaylists } from '../playlists/usePlaylists';
 import { migrateQueueToPlaylist } from '../playlists/migrateQueue';
 import AddTrackModal from '../queue/AddTrackModal';
+import GeneratePlaylistModal from '../llm/GeneratePlaylistModal';
 
 export default function ServerView() {
   const { serverId } = useParams<{ serverId: string }>();
@@ -38,6 +39,7 @@ export default function ServerView() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
 
   const { playlists, loading: playlistsLoading } = usePlaylists(resolvedId || undefined);
@@ -95,15 +97,24 @@ export default function ServerView() {
         
         <div className="flex items-center gap-2 md:gap-4">
           {isDJ && viewedPlaylist && (
-            <button 
-              onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 bg-accent px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-accent-foreground transition-all hover:bg-accent/90 hover:scale-105 active:scale-95"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-              </svg>
-              <span className="hidden md:inline">Add Track</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsGenerateModalOpen(true)}
+                className="flex items-center gap-2 border border-accent/40 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-accent transition-all hover:bg-accent/10 active:scale-95 relative overflow-hidden group"
+              >
+                <span className="relative z-10">✦ Generate</span>
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+              </button>
+              <button 
+                onClick={() => setIsAddModalOpen(true)}
+                className="flex items-center gap-2 bg-accent px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-accent-foreground transition-all hover:bg-accent/90 hover:scale-105 active:scale-95"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="hidden md:inline">Add Track</span>
+              </button>
+            </div>
           )}
           
           <div className="flex items-center gap-1 border-r border-rule pr-2 md:gap-2 md:pr-4">
@@ -181,6 +192,15 @@ export default function ServerView() {
           playlistId={viewedPlaylist.id}
           isOpen={isAddModalOpen} 
           onClose={() => setIsAddModalOpen(false)} 
+        />
+      )}
+
+      {resolvedId && viewedPlaylist && (
+        <GeneratePlaylistModal
+          serverId={resolvedId}
+          playlistId={viewedPlaylist.id}
+          isOpen={isGenerateModalOpen}
+          onClose={() => setIsGenerateModalOpen(false)}
         />
       )}
     </div>

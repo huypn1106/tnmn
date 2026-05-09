@@ -39,7 +39,7 @@ export default function PlayerBar() {
   const { tracks: allServerTracks } = useAllTracks(resolvedId || undefined);
   const tracks = playbackState?.crossPlaylist ? allServerTracks : playlistTracks;
 
-  const { playlists } = usePlaylists(resolvedId || undefined);
+  const { playlists, loading: playlistsLoading } = usePlaylists(resolvedId || undefined);
   const playingPlaylist = playlists.find(p => p.id === playbackState?.playlistId);
 
   const [showAddMenu, setShowAddMenu] = useState(false);
@@ -323,40 +323,52 @@ export default function PlayerBar() {
               <div className="relative">
                 <button 
                   onClick={() => setShowAddMenu(!showAddMenu)}
-                  className="font-mono text-[8px] uppercase text-text-3 hover:text-text border border-rule px-1 ml-2"
+                  className="flex items-center gap-1 font-mono text-[8px] uppercase text-text-3 hover:text-text border border-rule px-1 py-0.5 ml-1 transition-colors active:scale-95"
                 >
-                  + Add
+                  <span className="text-[10px] leading-none">+</span>
+                  <span>Add</span>
                 </button>
                 {showAddMenu && (
-                  <div className="absolute bottom-full left-0 mb-2 w-48 bg-bg-2 border border-rule shadow-xl flex flex-col z-50">
+                  <div className="absolute bottom-full left-0 mb-2 w-48 bg-bg-2 border border-rule shadow-xl flex flex-col z-50 animate-in fade-in slide-in-from-bottom-1 duration-200">
                     <div className="px-3 py-2 border-b border-rule font-mono text-[10px] text-text-3 uppercase tracking-widest">
                       Add to Playlist
                     </div>
                     <div className="max-h-48 overflow-y-auto custom-scrollbar">
-                      {playlists.map(p => (
-                        <button 
-                          key={p.id}
-                          onClick={async () => {
-                            if (!serverId) return;
-                            try {
-                              await addTrackToPlaylist(serverId, p.id, {
-                                source: playbackState.source,
-                                sourceId: playbackState.sourceId,
-                                title: playbackState.title || '',
-                                thumbnail: playbackState.thumbnail || '',
-                                duration: playbackState.duration || 0,
-                              }, user.uid);
-                              setShowAddMenu(false);
-                            } catch (error: any) {
-                              console.error(error);
-                              alert(error.message);
-                            }
-                          }}
-                          className="w-full text-left px-3 py-2 font-serif text-[13px] hover:bg-bg-3 truncate transition-colors"
-                        >
-                          {p.name}
-                        </button>
-                      ))}
+                      {playlistsLoading ? (
+                        <div className="px-3 py-4 text-center">
+                          <div className="h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                          <p className="font-mono text-[8px] text-text-3 uppercase">Loading...</p>
+                        </div>
+                      ) : playlists.length === 0 ? (
+                        <div className="px-3 py-4 text-center">
+                          <p className="font-mono text-[10px] text-text-3 uppercase tracking-wider">No playlists found</p>
+                        </div>
+                      ) : (
+                        playlists.map(p => (
+                          <button 
+                            key={p.id}
+                            onClick={async () => {
+                              if (!resolvedId) return;
+                              try {
+                                await addTrackToPlaylist(resolvedId, p.id, {
+                                  source: playbackState.source,
+                                  sourceId: playbackState.sourceId,
+                                  title: playbackState.title || '',
+                                  thumbnail: playbackState.thumbnail || '',
+                                  duration: playbackState.duration || 0,
+                                }, user.uid);
+                                setShowAddMenu(false);
+                              } catch (error: any) {
+                                console.error(error);
+                                alert(error.message);
+                              }
+                            }}
+                            className="w-full text-left px-3 py-2 font-serif text-[13px] hover:bg-bg-3 truncate transition-colors"
+                          >
+                            {p.name}
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
