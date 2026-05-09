@@ -1,6 +1,4 @@
-export const NVIDIA_BASE_URL = import.meta.env.PROD 
-  ? 'https://integrate.api.nvidia.com/v1' 
-  : '/api/nvidia';
+export const NVIDIA_BASE_URL = '/api/nvidia';
 export const NVIDIA_MODEL = 'meta/llama-3.3-70b-instruct';
 
 export async function nvidiaChat(
