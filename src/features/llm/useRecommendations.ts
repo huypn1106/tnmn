@@ -9,13 +9,14 @@ import { resolveTrackToYouTube } from './resolveTrack';
 import type { ResolvedTrack } from './resolveTrack';
 
 export function useRecommendations(serverId: string | undefined, playlistId: string | undefined) {
+  const enableAI = import.meta.env.VITE_ENABLE_AI_FEATURE === 'true';
   const { tracks } = useTracks(serverId, playlistId);
   const [recs, setRecs] = useState<ResolvedTrack[]>([]);
   const [loading, setLoading] = useState(false);
   const lastTitlesHash = useRef('');
 
   const fetchRecs = async (force = false) => {
-    if (!serverId || !playlistId || tracks.length === 0) return;
+    if (!enableAI || !serverId || !playlistId || tracks.length === 0) return;
     
     const titles = tracks.map(t => t.title);
     const hash = titles.join('|');

@@ -44,6 +44,8 @@ export default function GeneratePlaylistModal({ serverId, playlistId, isOpen, on
   const abortRef = useRef<AbortController | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const enableAI = import.meta.env.VITE_ENABLE_AI_FEATURE === 'true';
+
   useEffect(() => {
     if (!isOpen) {
       setPrompt('');
@@ -87,7 +89,7 @@ export default function GeneratePlaylistModal({ serverId, playlistId, isOpen, on
   };
 
   const handleGenerate = async () => {
-    if (!prompt.trim() || !user) return;
+    if (!prompt.trim() || !user || !enableAI) return;
 
     const apiKey = import.meta.env.VITE_NVIDIA_API_KEY;
     if (!apiKey) {
@@ -201,7 +203,7 @@ export default function GeneratePlaylistModal({ serverId, playlistId, isOpen, on
   const usage = getUsage();
   const nearLimit = usage >= 900;
 
-  if (!isOpen) return null;
+  if (!isOpen || !enableAI) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-bg/80 backdrop-blur-sm">

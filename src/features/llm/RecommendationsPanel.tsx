@@ -11,9 +11,12 @@ interface Props {
 }
 
 export function RecommendationsPanel({ serverId, playlistId }: Props) {
+  const enableAI = import.meta.env.VITE_ENABLE_AI_FEATURE === 'true';
   const { recs, loading, refresh } = useRecommendations(serverId, playlistId);
   const { user } = useAuth();
   const [show, setShow] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+
+  if (!enableAI) return null;
 
   const handleAdd = async (track: ResolvedTrack) => {
     if (!user) return;

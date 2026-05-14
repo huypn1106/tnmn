@@ -45,6 +45,8 @@ export default function ServerView() {
 
   const { playlists, loading: playlistsLoading } = usePlaylists(resolvedId || undefined);
 
+  const enableAI = import.meta.env.VITE_ENABLE_AI_FEATURE === 'true';
+
   const isDJ = !!user && !!server && server.roles?.[user.uid] === 'dj';
   const isOwner = !!user && !!server && server.ownerId === user.uid;
   
@@ -103,13 +105,15 @@ export default function ServerView() {
         <div className="flex items-center gap-2 md:gap-4 shrink-0 w-[240px] justify-end">
           {isDJ && viewedPlaylist && (
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsGenerateModalOpen(true)}
-                className="flex items-center gap-2 border border-accent/40 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-accent transition-all hover:bg-accent/10 active:scale-95 relative overflow-hidden group"
-              >
-                <span className="relative z-10">✦ Generate</span>
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-              </button>
+              {enableAI && (
+                <button
+                  onClick={() => setIsGenerateModalOpen(true)}
+                  className="flex items-center gap-2 border border-accent/40 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-accent transition-all hover:bg-accent/10 active:scale-95 relative overflow-hidden group"
+                >
+                  <span className="relative z-10">✦ Generate</span>
+                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                </button>
+              )}
               <button 
                 onClick={() => setIsAddModalOpen(true)}
                 className="flex items-center gap-2 bg-accent px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-accent-foreground transition-all hover:bg-accent/90 hover:scale-105 active:scale-95 whitespace-nowrap"
