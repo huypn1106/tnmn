@@ -11,6 +11,7 @@ import { usePlaylists } from '../playlists/usePlaylists';
 import { migrateQueueToPlaylist } from '../playlists/migrateQueue';
 import AddTrackModal from '../queue/AddTrackModal';
 import GeneratePlaylistModal from '../llm/GeneratePlaylistModal';
+import QuoteDisplay from '../../shared/QuoteDisplay';
 
 export default function ServerView() {
   const { serverId } = useParams<{ serverId: string }>();
@@ -78,7 +79,7 @@ export default function ServerView() {
       <div className="flex h-full items-center justify-center p-8 text-center bg-[radial-gradient(circle_at_center,var(--bg-2)_0%,transparent_70%)]">
         <div className="max-w-md space-y-6">
           <h1 className="font-serif text-5xl text-text opacity-10 animate-pulse">Select a room.</h1>
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-3">Your circle is waiting for the signal</p>
+          <QuoteDisplay className="mt-4" />
         </div>
       </div>
     );
@@ -87,15 +88,19 @@ export default function ServerView() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-rule p-4 md:p-8">
-        <div className="space-y-2">
-          <h2 className="font-serif text-5xl tracking-tighter leading-none">{server?.name || 'Queue'}</h2>
+      <header className="flex items-center justify-between border-b border-rule p-3 px-4 md:py-4 md:px-8 short:py-2">
+        <div className="space-y-1 shrink-0 w-[240px]">
+          <h2 className="font-serif text-3xl md:text-4xl short:text-2xl tracking-tighter leading-none">{server?.name || 'Queue'}</h2>
           <p className="font-mono text-[10px] uppercase tracking-widest text-text-3">
             {server?.slug ? `/server/${server.slug}` : 'Session Dynamics'}
           </p>
         </div>
         
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="hidden md:flex flex-1 justify-center px-6 max-w-lg">
+          <QuoteDisplay className="text-center" />
+        </div>
+        
+        <div className="flex items-center gap-2 md:gap-4 shrink-0 w-[240px] justify-end">
           {isDJ && viewedPlaylist && (
             <div className="flex items-center gap-2">
               <button
@@ -107,7 +112,7 @@ export default function ServerView() {
               </button>
               <button 
                 onClick={() => setIsAddModalOpen(true)}
-                className="flex items-center gap-2 bg-accent px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-accent-foreground transition-all hover:bg-accent/90 hover:scale-105 active:scale-95"
+                className="flex items-center gap-2 bg-accent px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-accent-foreground transition-all hover:bg-accent/90 hover:scale-105 active:scale-95 whitespace-nowrap"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />

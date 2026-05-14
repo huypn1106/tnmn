@@ -5,6 +5,7 @@ import { fetchTrackMetadata, parseYouTubeVideoId, parseSoundCloudUrl } from './m
 import type { TrackMetadata } from './metadata';
 import { searchYouTube } from './youtubeApi';
 import type { YouTubeSearchResult } from './youtubeApi';
+import { nvidiaChat } from '../llm/nvidia';
 
 import { addTrackToPlaylist } from '../playlists/trackActions';
 
@@ -16,6 +17,7 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const enableAI = import.meta.env.VITE_ENABLE_AI_FEATURE === 'true';
 
   useEffect(() => {
     if (!isOpen) {
@@ -95,6 +97,25 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
     }
   };
 
+  const handleSuggest = async () => {
+    setSearching(true);
+    setError('');
+    try {
+      const prompt = `Suggest a good song name and artist to listen to. Return ONLY the title and artist, e.g. "Bohemian Rhapsody by Queen".`;
+      const suggestion = await nvidiaChat([{ role: 'user', content: prompt }]);
+      setInputValue(suggestion);
+      const results = await searchYouTube(suggestion);
+      setSearchResults(results);
+      if (results.length === 0) {
+        setError('No results found for suggestion');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Suggestion failed');
+    } finally {
+      setSearching(false);
+    }
+  };
+
   const handleSelectResult = (result: YouTubeSearchResult) => {
     addTrack({
       source: 'youtube',
@@ -129,6 +150,16 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
               {error && <p className="font-mono text-[10px] uppercase text-accent mt-1">{error}</p>}
               {success && <p className="font-mono text-[10px] uppercase text-green-500 mt-1">Track added successfully</p>}
             </div>
+            {enableAI && (
+              <button
+                type="button"
+                onClick={handleSuggest}
+                disabled={loading || searching}
+                className="h-10 px-4 bg-bg-3 font-mono text-[10px] uppercase tracking-widest text-text hover:brightness-110 disabled:opacity-50 transition-colors border border-rule hover:border-accent"
+              >
+                Suggest
+              </button>
+            )}
             <button
               type="submit"
               disabled={loading || searching || !inputValue.trim()}

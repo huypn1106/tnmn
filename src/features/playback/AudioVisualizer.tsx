@@ -138,7 +138,7 @@ export default function AudioVisualizer({ isPlaying }: AudioVisualizerProps) {
   return (
     <div 
       ref={containerRef} 
-      className="w-full h-[40px] relative overflow-hidden pointer-events-none mb-2 mt-1 animate-in fade-in duration-1000"
+      className="w-full h-[40px] short:h-[24px] relative overflow-hidden pointer-events-none mb-2 mt-1 short:mb-1 short:mt-0 animate-in fade-in duration-1000"
       style={{ mixBlendMode: 'screen' }}
     >
       <canvas 

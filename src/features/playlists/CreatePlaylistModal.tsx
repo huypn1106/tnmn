@@ -16,8 +16,10 @@ export default function CreatePlaylistModal({
   const { user } = useAuth();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [mode, setMode] = useState<'manual' | 'youtube_import'>('manual');
+  const [llmPrompt, setLlmPrompt] = useState('');
+  const [mode, setMode] = useState<'manual' | 'youtube_import' | 'llm'>('manual');
   const [loading, setLoading] = useState(false);
+  const enableAI = import.meta.env.VITE_ENABLE_AI_FEATURE === 'true';
 
   if (!isOpen) return null;
 
@@ -27,7 +29,7 @@ export default function CreatePlaylistModal({
 
     setLoading(true);
     try {
-      const newId = await createPlaylist(serverId, name.trim(), user.uid, mode);
+      const newId = await createPlaylist(serverId, name.trim(), user.uid, mode, mode === 'llm' ? llmPrompt.trim() : null);
       
       // If mode is youtube_import, we would handle the import here.
       // But for now, we'll just create the empty playlist.
@@ -35,6 +37,7 @@ export default function CreatePlaylistModal({
 
       setName('');
       setDescription('');
+      setLlmPrompt('');
       onClose();
       if (onCreated) onCreated(newId);
     } catch (error) {
@@ -64,6 +67,15 @@ export default function CreatePlaylistModal({
           >
             From YouTube
           </button>
+          {enableAI && (
+            <button 
+              type="button"
+              onClick={() => setMode('llm')}
+              className={`px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors ${mode === 'llm' ? 'bg-bg-3 text-accent' : 'text-text-3 hover:text-text'}`}
+            >
+              Generate
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -90,6 +102,19 @@ export default function CreatePlaylistModal({
               placeholder="Late night vibes..."
             />
           </div>
+
+          {mode === 'llm' && (
+            <div className="space-y-1">
+              <label className="font-mono text-[10px] uppercase tracking-widest text-text-3">Prompt for AI</label>
+              <textarea
+                value={llmPrompt}
+                onChange={(e) => setLlmPrompt(e.target.value)}
+                className="w-full border-b border-rule bg-transparent py-2 font-mono text-sm outline-none transition-colors focus:border-accent resize-none h-20"
+                placeholder="A playlist for coding late at night with chill vibes..."
+                required
+              />
+            </div>
+          )}
 
           <div className="flex gap-4 pt-4">
             <button

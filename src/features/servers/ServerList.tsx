@@ -133,7 +133,7 @@ export default function ServerList({ viewedPlaylistId, setViewedPlaylistId }: Se
         </div>
       )}
 
-      <div className="mt-auto p-4">
+      <div className="p-4">
         <div 
           onClick={() => setIsUserModalOpen(true)}
           className="flex cursor-pointer items-center gap-3 rounded-2xl bg-bg-3/30 p-3 ring-1 ring-rule transition-all hover:bg-bg-3/50 group"

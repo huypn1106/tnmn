@@ -1072,5 +1072,435 @@ export function useColorThief(thumbnailUrl: string | null) {
 ```
 
 ---
-
-*Generated for use with Claude Code. Start implementation from Phase 1 and work sequentially. Each phase is independently deployable.*
+ 
+### Phase 7 — Fancy Mode (Room-wide Vibe Reaction) (Week 15)
+ 
+> Any user in the room can fire a **Vibe** reaction on a track they love.
+> When triggered, the entire UI shifts into *Fancy Mode* — a different visual theme,
+> ambient animations, and a shared energy moment — for all connected members simultaneously.
+> After a fixed duration it gracefully fades back to the default theme.
+> Powered by Firebase RTDB (same sync mechanism as playback state).
+ 
+---
+ 
+#### Step 7.1 — RTDB vibe state node
+ 
+Add a new node alongside `playback/{serverId}` in Firebase RTDB:
+ 
+```ts
+// RTDB: vibe/{serverId}
+{
+  active: boolean;          // is fancy mode currently on
+  triggeredBy: string;      // uid of the member who fired it
+  triggeredAt: number;      // Date.now() — epoch ms
+  trackId: string;          // which track triggered it (for display)
+  trackTitle: string;       // cached for display without a Firestore read
+  expiresAt: number;        // triggeredAt + FANCY_DURATION_MS
+  count: number;            // total vibe fires on this track (cumulative)
+}
+```
+ 
+- Duration constant: `FANCY_DURATION_MS = 30_000` (30 seconds). Tunable later.
+- After `expiresAt`, every client independently sets `active: false` on their own timer — no server cleanup needed.
+- Only one vibe can be active at a time. Firing while one is active resets `triggeredAt` and `expiresAt` (extends or restarts the timer).
+Update `database.rules.json`:
+ 
+```json
+{
+  "rules": {
+    "vibe": {
+      "$serverId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}
+```
+ 
+**Exit criterion:** Manually writing `{ active: true, triggeredBy: 'uid', triggeredAt: <now>, expiresAt: <now+30000>, count: 1 }` to `vibe/{serverId}` in the Firebase RTDB console is readable by a client subscribed to that node via `onValue`. The write appears in the client within 200ms. Both `read` and `write` are denied for unauthenticated requests (verified in RTDB Rules simulator).
+ 
+---
+ 
+#### Step 7.2 — `useVibeSync` hook
+ 
+Create `src/features/vibe/useVibeSync.ts`:
+ 
+```ts
+const FANCY_DURATION_MS = 30_000;
+ 
+export function useVibeSync(serverId: string) {
+  const { user } = useAuth();
+  const [vibeState, setVibeState] = useState<VibeState | null>(null);
+  const [fancyActive, setFancyActive] = useState(false);
+  const expiryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+ 
+  // Subscribe to RTDB vibe node
+  useEffect(() => {
+    if (!serverId) return;
+    const ref = rtdb.ref(`vibe/${serverId}`);
+    return onValue(ref, (snap) => {
+      const state = snap.val() as VibeState | null;
+      setVibeState(state);
+ 
+      if (state?.active && Date.now() < state.expiresAt) {
+        setFancyActive(true);
+        // Clear any existing timer
+        if (expiryTimer.current) clearTimeout(expiryTimer.current);
+        // Schedule local deactivation
+        expiryTimer.current = setTimeout(() => {
+          setFancyActive(false);
+        }, state.expiresAt - Date.now());
+      } else {
+        setFancyActive(false);
+      }
+    });
+  }, [serverId]);
+ 
+  // Fire a vibe — any member can call this
+  const fireVibe = useCallback(async () => {
+    if (!user) return;
+    const now = Date.now();
+    const ref = rtdb.ref(`vibe/${serverId}`);
+    const currentSnap = await ref.get();
+    const current = currentSnap.val() as VibeState | null;
+ 
+    await ref.set({
+      active: true,
+      triggeredBy: user.uid,
+      triggeredAt: now,
+      expiresAt: now + FANCY_DURATION_MS,
+      trackId: current?.trackId ?? '',
+      trackTitle: current?.trackTitle ?? '',
+      count: (current?.count ?? 0) + 1,
+    });
+  }, [serverId, user]);
+ 
+  return { vibeState, fancyActive, fireVibe };
+}
+```
+ 
+- Expose `fancyActive` as the single boolean that drives all UI changes
+- The hook self-expires locally via `setTimeout` — no polling, no writes on expiry
+- Call `useVibeSync` once at the `ServerPage` level; pass `fancyActive` down via context
+**Exit criterion:** One browser tab calls `fireVibe()`. Within 300ms, `fancyActive` becomes `true` in both the firing tab and a second observer tab. After 30 seconds, `fancyActive` becomes `false` in both tabs — without any additional write to RTDB. Firing again while active resets the 30-second clock (verified: the second tab's timer restarts). `fireVibe()` called by an unauthenticated user throws without writing (auth guard in the hook).
+ 
+---
+ 
+#### Step 7.3 — Fancy Mode CSS theme layer
+ 
+Fancy Mode is a **CSS class swap** on `<body>` (or the server root div) — all visual changes cascade from a single class, keeping the normal theme fully intact underneath.
+ 
+Add to `theme.css`:
+ 
+```css
+/* ── FANCY MODE OVERRIDES ── */
+.fancy {
+  --bg:        #0a0015;
+  --bg-2:      #110022;
+  --bg-3:      #1a0033;
+  --text:      #f0e6ff;
+  --text-2:    #c9a8ff;
+  --text-3:    #7a4dbb;
+  --rule:      rgba(180, 100, 255, 0.15);
+  --accent:    #bf5fff;
+  --accent-dim: rgba(191, 95, 255, 0.18);
+ 
+  /* Grain shifts to coloured noise */
+  --grain-opacity: 0.06;
+  --grain-color:   rgba(180, 80, 255, 0.4);
+}
+ 
+/* Entry transition — applied once on class add */
+.fancy-enter {
+  animation: fancyEntry 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+ 
+@keyframes fancyEntry {
+  0%   { filter: brightness(1) saturate(1); }
+  30%  { filter: brightness(1.6) saturate(2.2); }
+  100% { filter: brightness(1) saturate(1); }
+}
+ 
+/* Exit transition */
+.fancy-exit {
+  animation: fancyExit 2s ease-in-out forwards;
+}
+ 
+@keyframes fancyExit {
+  0%   { opacity: 1; }
+  100% { opacity: 1; } /* CSS vars interpolate back — no opacity change needed */
+}
+ 
+/* ── FANCY AMBIENT ELEMENTS ── */
+ 
+/* Floating orbs — pseudo-elements on body */
+.fancy body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 50%, rgba(120, 40, 200, 0.18) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 80% 30%, rgba(60, 0, 180, 0.15) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 50% 80%, rgba(180, 60, 255, 0.12) 0%, transparent 60%);
+  animation: orbDrift 8s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+}
+ 
+@keyframes orbDrift {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(2%, -2%) scale(1.04); }
+  100% { transform: translate(-1%, 3%) scale(0.97); }
+}
+ 
+/* Now-playing bar glows in fancy mode */
+.fancy .player-bar {
+  box-shadow: 0 -1px 40px rgba(191, 95, 255, 0.25);
+  border-top: 1px solid rgba(191, 95, 255, 0.3);
+}
+ 
+/* Active track row pulses */
+.fancy .track-row--active {
+  animation: trackPulse 2s ease-in-out infinite;
+}
+ 
+@keyframes trackPulse {
+  0%, 100% { background: var(--accent-dim); }
+  50%       { background: rgba(191, 95, 255, 0.28); }
+}
+ 
+/* Waveform bars speed up and glow */
+.fancy .waveform-bar {
+  animation-duration: 0.5s !important;
+  box-shadow: 0 0 6px var(--accent);
+}
+```
+ 
+**Exit criterion:** Adding `class="fancy"` to `<body>` manually in DevTools shifts all CSS custom properties immediately (background turns deep purple, accent shifts to violet). Removing the class restores the original theme instantly. No `!important` overrides needed for the base theme variables (cascade order handles it). The orb background animation runs at 60fps without dropping frames (verified in Chrome Performance tab — no layout thrash, GPU-composited only).
+ 
+---
+ 
+#### Step 7.4 — Vibe button component
+ 
+Create `src/features/vibe/VibeButton.tsx`:
+ 
+- Placed in the now-playing bar, right side, next to the skip button
+- Icon: a flame or spark glyph — use an SVG inline (no icon library dependency)
+- Label: `✦` or `♥` in `--font-mono` — single character, no text
+- Normal state: `--text-3` color, 1px border `--rule`
+- Hover: border shifts to `--accent`, icon brightens
+- Fired state (while fancy is active): full `--accent` fill, animated shimmer sweep
+- Cooldown per user: 5 seconds — prevent rapid-fire spam (local `useState` timer, not enforced server-side)
+- Shows a ripple burst animation on click (pure CSS `@keyframes`, no library)
+- Tooltip on hover: *"Send a vibe to the room"* (hidden in fancy mode — everyone already knows)
+```tsx
+// src/features/vibe/VibeButton.tsx
+export function VibeButton({ serverId }: { serverId: string }) {
+  const { fancyActive, fireVibe } = useVibeSync(serverId);
+  const [cooldown, setCooldown] = useState(false);
+  const [ripple, setRipple] = useState(false);
+ 
+  const handleClick = async () => {
+    if (cooldown) return;
+    setRipple(true);
+    setTimeout(() => setRipple(false), 600);
+    setCooldown(true);
+    setTimeout(() => setCooldown(false), 5000);
+    await fireVibe();
+  };
+ 
+  return (
+    <button
+      className={[
+        'vibe-btn',
+        fancyActive ? 'vibe-btn--active' : '',
+        cooldown ? 'vibe-btn--cooldown' : '',
+        ripple ? 'vibe-btn--ripple' : '',
+      ].join(' ')}
+      onClick={handleClick}
+      disabled={cooldown}
+      title="Send a vibe to the room"
+    >
+      <svg /* flame SVG */ />
+    </button>
+  );
+}
+```
+ 
+**Exit criterion:** The button is visible in the now-playing bar. Clicking it triggers `fireVibe()` and the ripple animation plays for ~600ms. During the 5-second cooldown, the button is visually dimmed and unresponsive (no second write fires). When `fancyActive` is true (from any user's trigger), the button glows with `--accent` fill. When fancy mode expires, the button returns to its normal state.
+ 
+---
+ 
+#### Step 7.5 — Fancy Mode entry + exit orchestration
+ 
+Wire `fancyActive` into the UI in `ServerPage.tsx` (or its context provider):
+ 
+```tsx
+// ServerPage.tsx
+const { fancyActive, vibeState, fireVibe } = useVibeSync(serverId);
+ 
+// Toggle .fancy class on <body> and drive entry/exit animations
+useEffect(() => {
+  const root = document.body;
+ 
+  if (fancyActive) {
+    root.classList.remove('fancy-exit');
+    root.classList.add('fancy', 'fancy-enter');
+    // Remove entry class after animation completes
+    const t = setTimeout(() => root.classList.remove('fancy-enter'), 1200);
+    return () => clearTimeout(t);
+  } else {
+    root.classList.add('fancy-exit');
+    // Remove fancy after exit transition
+    const t = setTimeout(() => {
+      root.classList.remove('fancy', 'fancy-exit');
+    }, 2000);
+    return () => clearTimeout(t);
+  }
+}, [fancyActive]);
+```
+ 
+- The `useEffect` cleanup handles the case where the component unmounts mid-animation (leaving the server) — the class is removed, resetting the theme
+- Leaving the server while fancy is active → clean up: `document.body.classList.remove('fancy', 'fancy-enter', 'fancy-exit')`
+**Exit criterion:** Triggering `fireVibe()` causes `<body>` to gain the `fancy` class within 300ms (RTDB round-trip). The `fancy-enter` animation flashes brightness once, then settles into the fancy theme. After 30 seconds, `fancy-exit` is added and then both classes are removed, restoring the default theme. Navigating away from the server mid-fancy removes all classes immediately (no purple theme leaking into other routes). Both tabs change class state within 300ms of each other.
+ 
+---
+ 
+#### Step 7.6 — Vibe toast notification
+ 
+When fancy mode is triggered by *another* user (not the current user), show a non-intrusive toast:
+ 
+- Create `src/features/vibe/VibeToast.tsx`
+- Appears at top-center of the screen
+- Content: `[avatar]  [DisplayName] sent a vibe ✦` in `--font-mono`
+- Animation: slides in from top (`translateY(-100%)` → `translateY(0)`) with spring easing, auto-dismisses after 3 seconds
+- In fancy mode, the toast itself adopts the fancy theme (inherits CSS vars from `body.fancy`)
+- If the current user triggered it: no toast (don't notify yourself)
+- If fancy fires while a previous toast is still showing: replace it (not stack)
+```tsx
+// src/features/vibe/VibeToast.tsx
+export function VibeToast({ serverId }: { serverId: string }) {
+  const { user } = useAuth();
+  const { vibeState } = useVibeSync(serverId);
+  const [visible, setVisible] = useState(false);
+  const [triggererName, setTriggererName] = useState('');
+ 
+  useEffect(() => {
+    if (!vibeState?.active) return;
+    if (vibeState.triggeredBy === user?.uid) return; // own fire, skip
+ 
+    // Fetch triggerer's display name
+    getDoc(doc(db, 'users', vibeState.triggeredBy)).then((snap) => {
+      setTriggererName(snap.data()?.displayName ?? 'Someone');
+      setVisible(true);
+      const t = setTimeout(() => setVisible(false), 3000);
+      return () => clearTimeout(t);
+    });
+  }, [vibeState?.triggeredAt]); // re-run on each new fire (triggeredAt changes)
+ 
+  if (!visible) return null;
+  return (
+    <div className="vibe-toast">
+      {triggererName} sent a vibe ✦
+    </div>
+  );
+}
+```
+ 
+**Exit criterion:** User A fires a vibe. User B sees the toast within 500ms showing "User A sent a vibe ✦". User A does not see a toast (own-fire suppression). User B dismisses the toast — it slides back up and is gone after 3 seconds. Firing again while the toast is visible replaces it with a fresh toast (not duplicated). The toast is readable in both normal and fancy mode (contrast passes WCAG AA in both themes).
+ 
+---
+ 
+#### Step 7.7 — Fancy Mode particle burst (canvas layer)
+ 
+The centrepiece animation: when fancy mode activates, a brief particle burst erupts from the Vibe button position across the screen.
+ 
+- Create `src/features/vibe/FancyParticles.tsx`
+- Uses a `<canvas>` element fixed-positioned over the entire viewport (`z-index: 1000`, `pointer-events: none`)
+- Particle system: pure `requestAnimationFrame` loop, no library
+- On `fancyActive` flip to `true`: emit 80 particles from the now-playing bar's vibe button position
+- Particle properties: random velocity, random size (2–6px), colour cycles through `#bf5fff → #7b2fff → #ff6bff → #ffe0ff`, fade out over 1200ms
+- After all particles fade, the canvas clears and the loop stops (no idle RAF cost)
+- On `fancyActive` flip back to `false`: no burst (silent exit)
+```ts
+// src/features/vibe/FancyParticles.tsx (core logic)
+interface Particle {
+  x: number; y: number;
+  vx: number; vy: number;
+  size: number;
+  color: string;
+  alpha: number;
+  decay: number;
+}
+ 
+const COLORS = ['#bf5fff', '#7b2fff', '#ff6bff', '#ffe0ff', '#d4a0ff'];
+ 
+function spawnParticles(originX: number, originY: number): Particle[] {
+  return Array.from({ length: 80 }, () => {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 6;
+    return {
+      x: originX, y: originY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2, // slight upward bias
+      size: 2 + Math.random() * 4,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      alpha: 1,
+      decay: 0.012 + Math.random() * 0.018,
+    };
+  });
+}
+```
+ 
+- The `<canvas>` is mounted at the app root level, always present but invisible when empty
+- `FancyParticles` listens to `fancyActive` via context — when it flips true, it reads the Vibe button's `getBoundingClientRect()` to find the burst origin point
+**Exit criterion:** On fancy mode activation, 80 particles burst outward from the now-playing bar and fade within 1.5 seconds. DevTools Performance tab shows no dropped frames during the burst (all compositing, no layout). After the burst, `cancelAnimationFrame` has been called and the canvas is clear (transparent). The canvas does not intercept mouse clicks (pointer-events: none verified by clicking through it). On a mid-range mobile device (emulated via DevTools), the animation runs smoothly at ≥ 30fps.
+ 
+---
+ 
+#### Step 7.8 — Vibe count + history
+ 
+Show how many times the room has vibe-fired a track, and surface it in the UI.
+ 
+- The `count` field in `vibe/{serverId}` accumulates over the session (resets when a new track starts)
+- When the DJ changes the track (new `trackId` written to RTDB playback): reset `vibe/{serverId}` to `{ active: false, count: 0, trackId: newTrackId, ... }`
+- Show the count as a small badge on the Vibe button: `✦ 3` — hidden when count is 0
+- In the queue track list, if a track has been vibe-fired before (store `vibeCount` on the track document in Firestore — increment when `fireVibe` is called): show a small `✦` glyph next to the track title
+- Add `vibeCount` field to `playlists/{pid}/tracks/{trackId}`:
+```ts
+// When fireVibe() is called, also increment the track doc
+const trackRef = doc(
+  db, 'servers', serverId,
+  'playlists', activePlaylistId,
+  'tracks', currentTrackId
+);
+await updateDoc(trackRef, { vibeCount: increment(1) });
+```
+ 
+**Exit criterion:** Firing vibe 3 times on the same track shows `✦ 3` on the button badge (updating in real time across both tabs). When the DJ skips to a new track, the counter resets to 0. Tracks in the queue list that have been vibe-fired at least once show the `✦` glyph next to their title. A track with 0 vibes shows no glyph. The `vibeCount` field in Firestore increments correctly (verified in console — concurrent increments from two tabs both register, no lost count due to direct set).
+ 
+---
+ 
+### Phase 7 — Repo additions
+ 
+```
+src/
+└── features/
+    └── vibe/
+        ├── useVibeSync.ts          # RTDB subscription + fireVibe()
+        ├── VibeButton.tsx          # Flame button in PlayerBar
+        ├── VibeToast.tsx           # "X sent a vibe" notification
+        ├── FancyParticles.tsx      # Canvas particle burst
+        └── FancyModeProvider.tsx   # Context: fancyActive, vibeState
+ 
+src/styles/
+└── fancy.css                       # All .fancy class overrides + keyframes
+                                    # Imported in globals.css
+```
+ 
+### Phase 7 — RTDB cost note
+ 
+`vibe/{serverId}` is a tiny node (~200 bytes). Each `fireVibe()` call writes once. Each client subscribes with one `onValue` listener. 10 members firing 5 times each = 50 writes + 500 read events ≈ < 1 KB data transfer. Negligible against the 10 GB/month free RTDB bandwidth.
+ 
+---
