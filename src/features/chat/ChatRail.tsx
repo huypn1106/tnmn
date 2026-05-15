@@ -13,7 +13,7 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
   const scrollRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
   
-  const { server, resolvedId } = useServer(serverId);
+  const { resolvedId } = useServer(serverId);
   // We just need the state, so we pass null for player and false for isDJ/hasInteracted
   const { playbackState } = usePlaybackSync(resolvedId || undefined, false, null, false);
 
