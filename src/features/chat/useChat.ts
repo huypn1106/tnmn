@@ -10,6 +10,12 @@ export interface Message {
   username: string;
   photoURL: string;
   createdAt: any;
+  playbackState?: {
+    title?: string;
+    thumbnail?: string;
+    source?: string;
+    sourceId?: string;
+  } | null;
 }
 
 export function useChat(serverId: string | undefined, onNewMessage?: () => void) {
@@ -63,7 +69,7 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
     return () => unsubscribe();
   }, [serverId, user?.uid, onNewMessage]);
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = async (text: string, playbackState?: Message['playbackState']) => {
     if (!user || !serverId || !text.trim()) return;
 
     await addDoc(collection(db, 'servers', serverId, 'messages'), {
@@ -71,7 +77,8 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
       userId: user.uid,
       username: profile?.username || user.displayName || 'Unknown',
       photoURL: user.photoURL,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      playbackState: playbackState || null
     });
   };
 
