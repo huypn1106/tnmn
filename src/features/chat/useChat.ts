@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../app/firebase';
 import { useAuth } from '../auth/useAuth';
@@ -16,15 +16,19 @@ export interface Message {
     source?: string;
     sourceId?: string;
   } | null;
+  replyTo?: {
+    id: string;
+    text: string;
+    username: string;
+  } | null;
 }
 
-export function useChat(serverId: string | undefined, onNewMessage?: () => void) {
+export function useChat(serverId: string | undefined) {
   const { user, profile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [limitCount, setLimitCount] = useState(50);
   const [hasMore, setHasMore] = useState(true);
-  const isInitialLoad = useRef(true);
 
   useEffect(() => {
     if (!serverId) {
@@ -33,7 +37,6 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
       return;
     }
 
-    isInitialLoad.current = true;
     const q = query(
       collection(db, 'servers', serverId, 'messages'),
       orderBy('createdAt', 'desc'),
@@ -54,23 +57,10 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
       setMessages(reversedMsgs);
       setLoading(false);
       setHasMore(msgs.length === limitCount);
-
-      if (!isInitialLoad.current) {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added') {
-            const msg = change.doc.data() as Message;
-            if (msg.userId !== user?.uid) {
-              onNewMessage?.();
-            }
-          }
-        });
-      }
-      
-      isInitialLoad.current = false;
     });
 
     return () => unsubscribe();
-  }, [serverId, user?.uid, onNewMessage, limitCount]);
+  }, [serverId, limitCount]);
 
   const loadMore = () => {
     if (!loading && hasMore) {
@@ -78,7 +68,7 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
     }
   };
 
-  const sendMessage = async (text: string, playbackState?: Message['playbackState']) => {
+  const sendMessage = async (text: string, playbackState?: Message['playbackState'], replyTo?: Message['replyTo']) => {
     if (!user || !serverId || !text.trim()) return;
 
     await addDoc(collection(db, 'servers', serverId, 'messages'), {
@@ -87,7 +77,8 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
       username: profile?.username || user.displayName || 'Unknown',
       photoURL: user.photoURL,
       createdAt: serverTimestamp(),
-      playbackState: playbackState || null
+      playbackState: playbackState || null,
+      replyTo: replyTo || null
     });
   };
 

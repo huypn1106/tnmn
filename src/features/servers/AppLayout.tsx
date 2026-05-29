@@ -57,7 +57,7 @@ export default function AppLayout() {
           ${activeTab === 'chat' ? 'flex' : 'hidden'} 
           absolute inset-0 z-40 flex-col bg-bg md:relative md:border-l md:border-rule md:bg-bg-2 lg:flex lg:w-[var(--rail-w)] lg:shrink-0
         `}>
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-rule lg:hidden">
               <h2 className="font-mono text-xs uppercase tracking-widest text-text-3">Chat & Members</h2>
               <button onClick={() => setActiveTab('queue')} className="text-text-3">&times;</button>

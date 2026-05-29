@@ -17,7 +17,7 @@ interface MemberProfile {
 export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }) {
   const { serverId } = useParams<{ serverId: string }>();
   const { user, profile } = useAuth();
-  const { messages, sendMessage, loadMore, hasMore } = useChat(serverId, onNewMessage);
+  const { messages, sendMessage, loadMore, hasMore } = useChat(serverId);
   const [text, setText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -31,6 +31,7 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
   const { playbackState } = usePlaybackSync(resolvedId || undefined, false, null, false);
 
   const [expandedMsgId, setExpandedMsgId] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<Message['replyTo'] | null>(null);
 
   // States for @ mentions auto-complete
   const [membersList, setMembersList] = useState<MemberProfile[]>([]);
@@ -96,43 +97,59 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
     loadMore();
   };
 
-  // Adjust scroll position to prevent jumpiness when loading older messages
+  // Adjust scroll position to prevent jumpiness when loading older messages and show new message banner when appropriate
   useEffect(() => {
-    if (scrollRef.current && prevMessagesRef.current.length > 0 && messages.length > prevMessagesRef.current.length) {
-      const firstOldId = prevMessagesRef.current[0]?.id;
-      const firstNewId = messages[0]?.id;
+    if (scrollRef.current) {
+      const prevLength = prevMessagesRef.current.length;
+      const currLength = messages.length;
       
-      if (firstOldId !== firstNewId) {
-        const container = scrollRef.current;
-        const oldScrollHeight = container.scrollHeight;
-        const oldScrollTop = container.scrollTop;
+      if (prevLength > 0 && currLength > 0) {
+        const firstOldId = prevMessagesRef.current[0]?.id;
+        const firstNewId = messages[0]?.id;
+        const lastOldId = prevMessagesRef.current[prevLength - 1]?.id;
+        const lastNewId = messages[currLength - 1]?.id;
 
-        requestAnimationFrame(() => {
-          const newScrollHeight = container.scrollHeight;
-          container.scrollTop = oldScrollTop + (newScrollHeight - oldScrollHeight);
-          setLoadingMore(false);
-        });
+        let handledScroll = false;
+
+        // 1. Maintain scroll when older messages are loaded at the top
+        if (firstOldId !== firstNewId && currLength > prevLength) {
+          const container = scrollRef.current;
+          const oldScrollHeight = container.scrollHeight;
+          const oldScrollTop = container.scrollTop;
+
+          requestAnimationFrame(() => {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = oldScrollTop + (newScrollHeight - oldScrollHeight);
+            setLoadingMore(false);
+          });
+          handledScroll = true;
+        }
+
+        // 2. Check for new messages at the bottom
+        if (lastOldId !== lastNewId) {
+          if (isNearBottomRef.current) {
+            if (!handledScroll) {
+              scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }
+          } else {
+            setShowNewMessageBanner(true);
+          }
+          
+          // Trigger the ping sound if the message is from another user
+          const lastMsg = messages[currLength - 1];
+          if (lastMsg.userId !== user?.uid && onNewMessage) {
+            onNewMessage();
+          }
+        } else if (isNearBottomRef.current && !handledScroll) {
+          // 3. Fallback: just an update, ensure we stay at bottom if we already are
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      } else if (isNearBottomRef.current) {
+        // Initial load or transition from 0 to N messages
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       }
     }
     prevMessagesRef.current = messages;
-  }, [messages]);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      if (isNearBottomRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      } else {
-        // If a new message arrived at the bottom while we are not at bottom, show the banner
-        const prevLength = prevMessagesRef.current.length;
-        if (prevLength > 0 && messages.length > prevLength) {
-          const lastOldId = prevMessagesRef.current[prevLength - 1]?.id;
-          const lastNewId = messages[messages.length - 1]?.id;
-          if (lastOldId !== lastNewId) {
-            setShowNewMessageBanner(true);
-          }
-        }
-      }
-    }
   }, [messages]);
 
   // Click outside detection
@@ -235,10 +252,11 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
     } : null;
 
     // Force scroll to bottom when the user sends a message
-    isNearBottomRef.current = true;
-    sendMessage(text, currentSong);
+    handleScrollToBottom();
+    sendMessage(text, currentSong, replyingTo);
     setText('');
     setMentionSearch(null);
+    setReplyingTo(null);
   };
 
   // Check if a message mentions the current user
@@ -318,34 +336,71 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
             </div>
 
             {/* Bubble and Action Button Container */}
-            <div className={`flex items-center gap-2 max-w-[95%] ${msg.userId === user?.uid ? 'flex-row-reverse' : 'flex-row'}`}>
-              <div className={`px-3 py-2 text-xs font-chat leading-relaxed transition-all ${
-                msg.userId === user?.uid 
-                  ? 'bg-accent text-accent-foreground shadow-lg shadow-accent/10' 
-                  : isCurrentUserMentioned(msg.text)
-                    ? 'bg-accent/10 text-text border-l-2 border-accent shadow-lg shadow-accent/5'
-                    : 'bg-bg-3 text-text-2 border-l border-accent/20'
-              }`}>
-                {renderMessageContent(msg.text)}
-              </div>
+            <div className={`flex flex-col gap-1 max-w-[95%] ${msg.userId === user?.uid ? 'items-end' : 'items-start'}`}>
+              {msg.replyTo && (
+                <div 
+                  className={`flex items-center gap-1.5 text-[10px] text-text-3 mb-0.5 opacity-70 hover:opacity-100 transition-opacity cursor-pointer ${
+                    msg.userId === user?.uid ? 'flex-row-reverse text-right' : 'flex-row text-left'
+                  }`}
+                  onClick={() => {
+                    // Visual cue to scroll to the message or just indicate it
+                  }}
+                  title={msg.replyTo.text}
+                >
+                  <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                  <span className="font-bold">@{msg.replyTo.username}</span>
+                  <span className="truncate max-w-[150px]">{msg.replyTo.text}</span>
+                </div>
+              )}
+              <div className={`flex items-center gap-2 ${msg.userId === user?.uid ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`px-3 py-2 text-xs font-chat leading-relaxed transition-all ${
+                  msg.userId === user?.uid 
+                    ? 'bg-accent text-accent-foreground shadow-lg shadow-accent/10' 
+                    : isCurrentUserMentioned(msg.text)
+                      ? 'bg-accent/10 text-text border-l-2 border-accent shadow-lg shadow-accent/5'
+                      : 'bg-bg-3 text-text-2 border-l border-accent/20'
+                }`}>
+                  {renderMessageContent(msg.text)}
+                </div>
 
-              {/* Info Button - Visible on Hover or when Open */}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setExpandedMsgId(expandedMsgId === msg.id ? null : msg.id);
-                }}
-                className={`p-1.5 rounded-full transition-all shrink-0 ${
-                  expandedMsgId === msg.id 
-                    ? 'bg-accent text-accent-foreground opacity-100' 
-                    : 'text-text-3 hover:text-accent hover:bg-accent/10 opacity-0 group-hover:opacity-100'
-                }`}
-                title="Message Details"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
+                {/* Actions Container */}
+                <div className={`flex items-center gap-1 transition-opacity ${expandedMsgId === msg.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                  {/* Reply Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setReplyingTo({ id: msg.id, text: msg.text, username: msg.username });
+                      inputRef.current?.focus();
+                    }}
+                    className="p-1.5 rounded-full text-text-3 hover:text-accent hover:bg-accent/10 transition-all shrink-0"
+                    title="Reply"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                  </button>
+
+                  {/* Info Button */}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedMsgId(expandedMsgId === msg.id ? null : msg.id);
+                    }}
+                    className={`p-1.5 rounded-full transition-all shrink-0 ${
+                      expandedMsgId === msg.id 
+                        ? 'bg-accent text-accent-foreground' 
+                        : 'text-text-3 hover:text-accent hover:bg-accent/10'
+                    }`}
+                    title="Message Details"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
             
             {expandedMsgId === msg.id && (
@@ -447,8 +502,28 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
         </div>
       )}
 
+      {/* Replying Banner */}
+      {replyingTo && (
+        <div className="px-4 py-2 bg-bg-3 border-t border-rule flex items-center justify-between shrink-0 animate-in slide-in-from-bottom-2">
+          <div className="flex flex-col min-w-0 flex-1 mr-2">
+            <span className="font-mono text-[9px] uppercase tracking-widest text-accent flex items-center gap-1.5">
+              <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              Replying to @{replyingTo.username}
+            </span>
+            <span className="font-chat text-[11px] text-text-3 truncate mt-0.5">{replyingTo.text}</span>
+          </div>
+          <button type="button" onClick={() => setReplyingTo(null)} className="text-text-3 hover:text-text p-1 shrink-0 rounded-full hover:bg-bg-2 transition-colors">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Input */}
-      <form onSubmit={handleSend} className="p-4 border-t border-rule shrink-0">
+      <form onSubmit={handleSend} className={`p-4 border-t border-rule shrink-0 ${replyingTo ? 'bg-bg-3/50' : ''}`}>
         <input
           ref={inputRef}
           type="text"
