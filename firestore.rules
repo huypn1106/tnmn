@@ -49,12 +49,14 @@ service cloud.firestore {
 
       // Playlists subcollection
       match /playlists/{playlistId} {
-        allow read: if isMember(serverId);
-        allow write: if isDJ(serverId);
+        allow read: if isMember(serverId) || resource.data.isShared == true;
+        allow create: if isDJ(serverId) || (isMember(serverId) && request.resource.data.source == 'shared');
+        allow update: if isDJ(serverId);
+        allow delete: if isDJ(serverId) || (isMember(serverId) && resource.data.source == 'shared' && resource.data.createdBy == request.auth.uid);
         
         // Tracks subcollection
         match /tracks/{trackId} {
-          allow read: if isMember(serverId);
+          allow read: if isMember(serverId) || get(/databases/$(database)/documents/servers/$(serverId)/playlists/$(playlistId)).data.isShared == true;
           allow write: if isDJ(serverId);
         }
       }

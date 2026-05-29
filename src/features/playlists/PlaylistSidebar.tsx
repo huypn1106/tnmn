@@ -5,6 +5,7 @@ import { useAuth } from '../auth/useAuth';
 import { deletePlaylist, clonePlaylist, reorderPlaylist } from './playlistActions';
 import ConfirmModal from '../../shared/ConfirmModal';
 import RenamePlaylistModal from './RenamePlaylistModal';
+import SharePlaylistModal from './SharePlaylistModal';
 import type { Playlist } from './types';
 
 export default function PlaylistSidebar({ 
@@ -26,6 +27,7 @@ export default function PlaylistSidebar({
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [playlistToRename, setPlaylistToRename] = useState<Playlist | null>(null);
   const [playlistToDelete, setPlaylistToDelete] = useState<Playlist | null>(null);
+  const [playlistToShare, setPlaylistToShare] = useState<Playlist | null>(null);
 
   // Set initial viewed playlist if not set
   if (!viewedPlaylistId && activePlaylistId && playlists.some(p => p.id === activePlaylistId)) {
@@ -102,15 +104,20 @@ export default function PlaylistSidebar({
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <p className={`truncate font-sans text-[13px] font-medium tracking-wide ${isActive ? 'text-white' : 'text-text-2 group-hover:text-text'}`}>
-                    {playlist.name}
+                  <p className={`flex items-center gap-1.5 truncate font-sans text-[13px] font-medium tracking-wide ${isActive ? 'text-white' : 'text-text-2 group-hover:text-text'}`}>
+                    {playlist.source === 'shared' && (
+                      <svg className="w-3 h-3 text-text-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                    )}
+                    <span className="truncate">{playlist.name}</span>
                   </p>
                   <p className="truncate font-mono text-[9px] uppercase tracking-wider text-text-3 opacity-60">
-                    {playlist.trackCount} tracks
+                    {playlist.source === 'shared' ? 'Shared link' : `${playlist.trackCount} tracks`}
                   </p>
                 </div>
 
-                {isDJ && (
+                {(isDJ || (playlist.source === 'shared' && playlist.createdBy === user?.uid)) && (
                   <div className={`relative transition-opacity ${isViewed || isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                     <button 
                       onClick={(e) => {
@@ -128,64 +135,82 @@ export default function PlaylistSidebar({
                       <>
                         <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); }} />
                         <div className="absolute right-0 top-full mt-1 w-44 bg-bg-2 border border-rule shadow-2xl z-50 py-1.5 rounded-lg overflow-hidden ring-1 ring-black/20">
-                          <button 
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              setActiveMenuId(null);
-                              const prev = playlists[index - 1];
-                              if (prev) {
-                                const temp = playlist.order;
-                                await reorderPlaylist(serverId, playlist.id, prev.order);
-                                await reorderPlaylist(serverId, prev.id, temp);
-                              }
-                            }}
-                            disabled={index === 0}
-                            className="flex w-full px-4 py-2 text-left font-mono text-[9px] uppercase tracking-[0.1em] hover:bg-bg-3 hover:text-accent transition-colors disabled:opacity-20 items-center justify-between"
-                          >
-                            Move Up <span>↑</span>
-                          </button>
-                          <button 
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              setActiveMenuId(null);
-                              const next = playlists[index + 1];
-                              if (next) {
-                                const temp = playlist.order;
-                                await reorderPlaylist(serverId, playlist.id, next.order);
-                                await reorderPlaylist(serverId, next.id, temp);
-                              }
-                            }}
-                            disabled={index === playlists.length - 1}
-                            className="flex w-full px-4 py-2 text-left font-mono text-[9px] uppercase tracking-[0.1em] hover:bg-bg-3 hover:text-accent transition-colors disabled:opacity-20 items-center justify-between"
-                          >
-                            Move Down <span>↓</span>
-                          </button>
-                          <button 
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              setActiveMenuId(null);
-                              setPlaylistToRename(playlist);
-                            }}
-                            className="w-full px-4 py-2 text-left font-mono text-[9px] uppercase tracking-[0.1em] hover:bg-bg-3 hover:text-accent transition-colors"
-                          >
-                            Rename
-                          </button>
-                          <button 
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              setActiveMenuId(null);
-                              if (!user) return;
-                              try {
-                                const newId = await clonePlaylist(serverId, playlist.id, user.uid);
-                                setViewedPlaylistId(newId);
-                              } catch (err: any) {
-                                console.error(err);
-                              }
-                            }}
-                            className="w-full px-4 py-2 text-left font-mono text-[9px] uppercase tracking-[0.1em] hover:bg-bg-3 hover:text-accent transition-colors"
-                          >
-                            Clone
-                          </button>
+                          {isDJ && (
+                            <>
+                              <button 
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId(null);
+                                  const prev = playlists[index - 1];
+                                  if (prev) {
+                                    const temp = playlist.order;
+                                    await reorderPlaylist(serverId, playlist.id, prev.order);
+                                    await reorderPlaylist(serverId, prev.id, temp);
+                                  }
+                                }}
+                                disabled={index === 0}
+                                className="flex w-full px-4 py-2 text-left font-mono text-[9px] uppercase tracking-[0.1em] hover:bg-bg-3 hover:text-accent transition-colors disabled:opacity-20 items-center justify-between"
+                              >
+                                Move Up <span>↑</span>
+                              </button>
+                              <button 
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId(null);
+                                  const next = playlists[index + 1];
+                                  if (next) {
+                                    const temp = playlist.order;
+                                    await reorderPlaylist(serverId, playlist.id, next.order);
+                                    await reorderPlaylist(serverId, next.id, temp);
+                                  }
+                                }}
+                                disabled={index === playlists.length - 1}
+                                className="flex w-full px-4 py-2 text-left font-mono text-[9px] uppercase tracking-[0.1em] hover:bg-bg-3 hover:text-accent transition-colors disabled:opacity-20 items-center justify-between"
+                              >
+                                Move Down <span>↓</span>
+                              </button>
+                            </>
+                          )}
+                          {playlist.source !== 'shared' && isDJ && (
+                            <>
+                              <button 
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId(null);
+                                  setPlaylistToRename(playlist);
+                                }}
+                                className="w-full px-4 py-2 text-left font-mono text-[9px] uppercase tracking-[0.1em] hover:bg-bg-3 hover:text-accent transition-colors"
+                              >
+                                Rename
+                              </button>
+                              <button 
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId(null);
+                                  if (!user) return;
+                                  try {
+                                    const newId = await clonePlaylist(serverId, playlist.id, user.uid);
+                                    setViewedPlaylistId(newId);
+                                  } catch (err: any) {
+                                    console.error(err);
+                                  }
+                                }}
+                                className="w-full px-4 py-2 text-left font-mono text-[9px] uppercase tracking-[0.1em] hover:bg-bg-3 hover:text-accent transition-colors"
+                              >
+                                Clone
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId(null);
+                                  setPlaylistToShare(playlist);
+                                }}
+                                className="w-full px-4 py-2 text-left font-mono text-[9px] uppercase tracking-[0.1em] hover:bg-bg-3 hover:text-accent transition-colors"
+                              >
+                                Share
+                              </button>
+                            </>
+                          )}
                           <div className="h-px bg-rule my-1.5" />
                           <button 
                             onClick={(e) => {
@@ -195,7 +220,7 @@ export default function PlaylistSidebar({
                             }}
                             className="w-full px-4 py-2 text-left font-mono text-[9px] uppercase tracking-[0.1em] text-red-400 hover:bg-red-500/10 transition-colors"
                           >
-                            Delete
+                            {playlist.source === 'shared' ? 'Unshare' : 'Delete'}
                           </button>
                         </div>
                       </>
@@ -239,15 +264,26 @@ export default function PlaylistSidebar({
 
       {playlistToDelete && (
         <ConfirmModal
-          title="Delete Playlist"
-          message={`Are you sure you want to delete "${playlistToDelete.name}"?`}
+          title={playlistToDelete.source === 'shared' ? "Remove Shared Playlist" : "Delete Playlist"}
+          message={playlistToDelete.source === 'shared' 
+            ? `Are you sure you want to remove "${playlistToDelete.name}" from this server?`
+            : `Are you sure you want to delete "${playlistToDelete.name}"?`}
           onConfirm={() => {
             deletePlaylist(serverId, playlistToDelete.id);
             setPlaylistToDelete(null);
           }}
           onCancel={() => setPlaylistToDelete(null)}
-          confirmText="Delete"
+          confirmText={playlistToDelete.source === 'shared' ? "Remove" : "Delete"}
           variant="danger"
+        />
+      )}
+
+      {playlistToShare && (
+        <SharePlaylistModal
+          sourceServerId={serverId}
+          playlist={playlistToShare}
+          isOpen={!!playlistToShare}
+          onClose={() => setPlaylistToShare(null)}
         />
       )}
     </div>

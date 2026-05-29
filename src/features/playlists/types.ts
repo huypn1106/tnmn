@@ -9,9 +9,12 @@ export interface Playlist {
   createdAt: Timestamp | any;
   trackCount: number;
   totalDuration: number;
-  source: 'manual' | 'youtube_import' | 'llm';
+  source: 'manual' | 'youtube_import' | 'llm' | 'shared';
   llmPrompt: string | null;
   order: number;
+  isShared?: boolean;
+  sharedFrom?: string;
+  sharedPlaylistId?: string;
 }
 
 export interface Track {

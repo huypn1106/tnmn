@@ -1,4 +1,4 @@
-import { collection, doc, addDoc, updateDoc, writeBatch, serverTimestamp, getDocs, getDoc, query, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, writeBatch, serverTimestamp, getDocs, getDoc, query, orderBy, limit, deleteDoc } from 'firebase/firestore';
 import { db } from '../../app/firebase';
 import type { Playlist } from './types';
 
@@ -125,4 +125,63 @@ export async function reorderPlaylist(
   newOrder: number
 ): Promise<void> {
   await updateDoc(doc(db, 'servers', serverId, 'playlists', playlistId), { order: newOrder });
+}
+
+export async function sharePlaylist(
+  sourceServerId: string,
+  playlistId: string,
+  targetServerIds: string[],
+  userId: string,
+  playlistName: string
+): Promise<void> {
+  const originalRef = doc(db, 'servers', sourceServerId, 'playlists', playlistId);
+  
+  // Set the original as shared
+  await updateDoc(originalRef, { isShared: true });
+
+  // Create proxy documents in each target server
+  const chunks = [];
+  let currentBatch = writeBatch(db);
+  let opCount = 0;
+
+  for (const targetId of targetServerIds) {
+    if (opCount >= 400) {
+      chunks.push(currentBatch.commit());
+      currentBatch = writeBatch(db);
+      opCount = 0;
+    }
+    
+    // Check if proxy already exists
+    // We don't have a good way to check by sharedFrom/sharedPlaylistId without an index, but since we are just adding, we can let it duplicate if they share again, or we can just fetch and check
+    // Actually just create the proxy
+    const newProxyRef = doc(collection(db, 'servers', targetId, 'playlists'));
+    currentBatch.set(newProxyRef, {
+      name: playlistName,
+      description: null,
+      coverURL: null,
+      createdBy: userId,
+      createdAt: serverTimestamp(),
+      trackCount: 0, // Track count and duration aren't maintained on the proxy directly
+      totalDuration: 0,
+      source: 'shared',
+      llmPrompt: null,
+      order: 9999, // Put at the bottom by default
+      sharedFrom: sourceServerId,
+      sharedPlaylistId: playlistId,
+    });
+    opCount++;
+  }
+
+  if (opCount > 0) {
+    chunks.push(currentBatch.commit());
+  }
+  await Promise.all(chunks);
+}
+
+export async function unsharePlaylist(
+  targetServerId: string,
+  proxyPlaylistId: string
+): Promise<void> {
+  // We just delete the proxy playlist. We don't need to delete tracks since proxies have no tracks.
+  await deleteDoc(doc(db, 'servers', targetServerId, 'playlists', proxyPlaylistId));
 }

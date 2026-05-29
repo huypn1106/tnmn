@@ -282,7 +282,7 @@ export default function TrackListPanel({
                     </div>
                   </div>
 
-                  {isDJ && (
+                  {isDJ && playlist.source !== 'shared' && (
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
@@ -302,7 +302,7 @@ export default function TrackListPanel({
         )}
       </div>
 
-      {isDJ && <RecommendationsPanel serverId={serverId} playlistId={playlist.id} />}
+      {isDJ && playlist.source !== 'shared' && <RecommendationsPanel serverId={serverId} playlistId={playlist.id} />}
 
       {isSettingsOpen && (
         <PlaylistSettingsModal 

@@ -339,12 +339,12 @@ export default function PlayerBar() {
                           <div className="h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                           <p className="font-mono text-[8px] text-text-3 uppercase">Loading...</p>
                         </div>
-                      ) : playlists.length === 0 ? (
+                      ) : playlists.filter(p => p.source !== 'shared').length === 0 ? (
                         <div className="px-3 py-4 text-center">
-                          <p className="font-mono text-[10px] text-text-3 uppercase tracking-wider">No playlists found</p>
+                          <p className="font-mono text-[10px] text-text-3 uppercase tracking-wider">No writable playlists</p>
                         </div>
                       ) : (
-                        playlists.map(p => (
+                        playlists.filter(p => p.source !== 'shared').map(p => (
                           <button 
                             key={p.id}
                             onClick={async () => {
