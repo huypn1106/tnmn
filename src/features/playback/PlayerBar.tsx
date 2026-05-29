@@ -319,7 +319,7 @@ export default function PlayerBar() {
                 • Sync
               </button>
             )}
-            {user && (
+             {user && isDJ && (
               <div className="relative">
                 <button 
                   onClick={() => setShowAddMenu(!showAddMenu)}

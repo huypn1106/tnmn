@@ -13,6 +13,9 @@ export default function UserSettingsModal({ isOpen, onClose }: UserSettingsModal
   const { user, profile } = useAuth();
   const [username, setUsername] = useState(profile?.username || '');
   const [photoURL, setPhotoURL] = useState(profile?.photoURL || user?.photoURL || '');
+  const [muteNotifications, setMuteNotifications] = useState(() => {
+    return localStorage.getItem('tnmn_mute_notifications') === 'true';
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +54,9 @@ export default function UserSettingsModal({ isOpen, onClose }: UserSettingsModal
         username: val,
         photoURL: photoURL.trim(),
       });
+
+      // Save notification settings
+      localStorage.setItem('tnmn_mute_notifications', muteNotifications.toString());
 
       onClose();
     } catch (err) {
@@ -126,6 +132,31 @@ export default function UserSettingsModal({ isOpen, onClose }: UserSettingsModal
                    <span className="font-mono text-[10px] text-text-3">@{username || 'handle'}</span>
                 </div>
              </div>
+          </div>
+
+          {/* Mute Notifications Switch */}
+          <div className="flex items-center justify-between border-t border-b border-rule/50 py-4">
+            <div className="flex flex-col gap-1 pr-4">
+              <label className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+                Mute Notifications
+              </label>
+              <p className="font-mono text-[9px] leading-normal text-text-3">
+                Silence sound notifications for all new messages.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMuteNotifications(!muteNotifications)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                muteNotifications ? 'bg-accent' : 'bg-bg-3'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  muteNotifications ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
 
           {error && (

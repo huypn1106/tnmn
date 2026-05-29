@@ -18,8 +18,9 @@ export default function AppLayout() {
       setHasUnread(true);
     }
     
-    // Play sound if not on chat tab OR if window is in background
-    if (activeTab !== 'chat' || document.hidden) {
+    // Play sound if not on chat tab OR if window is in background, and notifications are not muted
+    const isMuted = localStorage.getItem('tnmn_mute_notifications') === 'true';
+    if (!isMuted && (activeTab !== 'chat' || document.hidden)) {
       playBip();
     }
   };

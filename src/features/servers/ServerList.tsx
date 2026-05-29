@@ -129,6 +129,7 @@ export default function ServerList({ viewedPlaylistId, setViewedPlaylistId }: Se
             activePlaylistId={activePlaylistId}
             viewedPlaylistId={viewedPlaylistId}
             setViewedPlaylistId={setViewedPlaylistId}
+            isDJ={isDJ}
           />
         </div>
       )}

@@ -282,17 +282,19 @@ export default function TrackListPanel({
                     </div>
                   </div>
 
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setTrackToRemove(item);
-                    }}
-                    className="mr-4 h-8 w-8 flex items-center justify-center text-text-3 opacity-0 transition-all hover:text-accent group-hover:opacity-100"
-                  >
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  {isDJ && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTrackToRemove(item);
+                      }}
+                      className="mr-4 h-8 w-8 flex items-center justify-center text-text-3 opacity-0 transition-all hover:text-accent group-hover:opacity-100"
+                    >
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -300,7 +302,7 @@ export default function TrackListPanel({
         )}
       </div>
 
-      <RecommendationsPanel serverId={serverId} playlistId={playlist.id} />
+      {isDJ && <RecommendationsPanel serverId={serverId} playlistId={playlist.id} />}
 
       {isSettingsOpen && (
         <PlaylistSettingsModal 

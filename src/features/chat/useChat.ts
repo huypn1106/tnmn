@@ -22,6 +22,8 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
   const { user, profile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [limitCount, setLimitCount] = useState(50);
+  const [hasMore, setHasMore] = useState(true);
   const isInitialLoad = useRef(true);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
     const q = query(
       collection(db, 'servers', serverId, 'messages'),
       orderBy('createdAt', 'desc'),
-      limit(50)
+      limit(limitCount)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -51,6 +53,7 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
       const reversedMsgs = [...msgs].reverse();
       setMessages(reversedMsgs);
       setLoading(false);
+      setHasMore(msgs.length === limitCount);
 
       if (!isInitialLoad.current) {
         snapshot.docChanges().forEach((change) => {
@@ -67,7 +70,13 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
     });
 
     return () => unsubscribe();
-  }, [serverId, user?.uid, onNewMessage]);
+  }, [serverId, user?.uid, onNewMessage, limitCount]);
+
+  const loadMore = () => {
+    if (!loading && hasMore) {
+      setLimitCount(prev => prev + 50);
+    }
+  };
 
   const sendMessage = async (text: string, playbackState?: Message['playbackState']) => {
     if (!user || !serverId || !text.trim()) return;
@@ -82,5 +91,5 @@ export function useChat(serverId: string | undefined, onNewMessage?: () => void)
     });
   };
 
-  return { messages, loading, sendMessage };
+  return { messages, loading, sendMessage, loadMore, hasMore };
 }

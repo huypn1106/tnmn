@@ -10,6 +10,13 @@ service cloud.firestore {
       return signedIn() && request.auth.uid in get(/databases/$(database)/documents/servers/$(serverId)).data.members;
     }
 
+    function isDJ(serverId) {
+      return isMember(serverId) && (
+        get(/databases/$(database)/documents/servers/$(serverId)).data.get('roles', {}).get(request.auth.uid, 'guest') == 'dj' ||
+        get(/databases/$(database)/documents/servers/$(serverId)).data.ownerId == request.auth.uid
+      );
+    }
+
     // User profiles
     match /users/{uid} {
       allow read: if signedIn();
@@ -42,11 +49,13 @@ service cloud.firestore {
 
       // Playlists subcollection
       match /playlists/{playlistId} {
-        allow read, write: if isMember(serverId);
+        allow read: if isMember(serverId);
+        allow write: if isDJ(serverId);
         
         // Tracks subcollection
         match /tracks/{trackId} {
-          allow read, write: if isMember(serverId);
+          allow read: if isMember(serverId);
+          allow write: if isDJ(serverId);
         }
       }
     }
