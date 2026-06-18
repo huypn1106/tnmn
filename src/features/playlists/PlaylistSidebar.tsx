@@ -14,12 +14,14 @@ export default function PlaylistSidebar({
   viewedPlaylistId, 
   setViewedPlaylistId,
   isDJ,
+  onCloseMobile,
 }: { 
   serverId: string; 
   activePlaylistId: string | null;
   viewedPlaylistId: string | null;
   setViewedPlaylistId: (id: string) => void;
   isDJ: boolean;
+  onCloseMobile?: () => void;
 }) {
   const { playlists, loading } = usePlaylists(serverId);
   const { user } = useAuth();
@@ -67,7 +69,10 @@ export default function PlaylistSidebar({
             return (
               <div 
                 key={playlist.id}
-                onClick={() => setViewedPlaylistId(playlist.id)}
+                onClick={() => {
+                  setViewedPlaylistId(playlist.id);
+                  onCloseMobile?.();
+                }}
                 className={`group relative flex items-center gap-3 rounded-xl p-3 cursor-pointer transition-all duration-300 ${
                   isActive 
                     ? 'bg-bg-3 text-white shadow-lg shadow-black/10' 

@@ -14,7 +14,7 @@ interface ServerListProps {
   setViewedPlaylistId: (id: string) => void;
 }
 
-export default function ServerList({ viewedPlaylistId, setViewedPlaylistId }: ServerListProps) {
+export default function ServerList({ viewedPlaylistId, setViewedPlaylistId, onCloseMobile }: ServerListProps) {
   const { servers, loading } = useServers();
   const { user, profile } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,6 +71,7 @@ export default function ServerList({ viewedPlaylistId, setViewedPlaylistId }: Se
                 <NavLink
                   key={server.id}
                   to={`/server/${server.slug || server.id}`}
+                  onClick={() => onCloseMobile?.()}
                   className={`group relative flex items-center gap-3 rounded-xl p-3 transition-all duration-300 ${
                     isActive 
                       ? 'bg-bg-3 text-white shadow-lg shadow-black/10' 
@@ -130,6 +131,7 @@ export default function ServerList({ viewedPlaylistId, setViewedPlaylistId }: Se
             viewedPlaylistId={viewedPlaylistId}
             setViewedPlaylistId={setViewedPlaylistId}
             isDJ={isDJ}
+            onCloseMobile={onCloseMobile}
           />
         </div>
       )}

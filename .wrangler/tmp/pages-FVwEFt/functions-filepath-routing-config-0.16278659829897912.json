@@ -1,0 +1,21 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/nvidia/:path*",
+      "mountPath": "/api/nvidia",
+      "method": "OPTIONS",
+      "module": [
+        "api/nvidia/[[path]].ts:onRequestOptions"
+      ]
+    },
+    {
+      "routePath": "/api/nvidia/:path*",
+      "mountPath": "/api/nvidia",
+      "method": "",
+      "module": [
+        "api/nvidia/[[path]].ts:onRequest"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}
