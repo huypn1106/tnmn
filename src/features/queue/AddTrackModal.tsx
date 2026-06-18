@@ -7,12 +7,13 @@ import { searchYouTube } from './youtubeApi';
 import type { YouTubeSearchResult } from './youtubeApi';
 import { nvidiaChat } from '../llm/nvidia';
 
-import { addTrackToPlaylist } from '../playlists/trackActions';
+import { addTrackToPlaylist, addMultipleTracksToPlaylist } from '../playlists/trackActions';
 
 export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }: { serverId: string; playlistId: string; isOpen: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [searchResults, setSearchResults] = useState<YouTubeSearchResult[]>([]);
+  const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
@@ -23,6 +24,7 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
     if (!isOpen) {
       setInputValue('');
       setSearchResults([]);
+      setSelectedTrackIds(new Set());
       setError('');
       setSuccess(false);
     }
@@ -53,8 +55,38 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
       setSuccess(true);
       setInputValue('');
       setSearchResults([]);
+      setSelectedTrackIds(new Set());
     } catch (err: any) {
       setError(err.message || 'Failed to add track');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddSelected = async () => {
+    if (!user || !playlistId || selectedTrackIds.size === 0) return;
+    setLoading(true);
+    setError('');
+    setSuccess(false);
+
+    const tracksToAdd = searchResults
+      .filter(r => selectedTrackIds.has(r.id))
+      .map(r => ({
+        source: 'youtube' as const,
+        sourceId: r.id,
+        title: r.title,
+        thumbnail: r.thumbnail,
+        duration: 0,
+      }));
+
+    try {
+      await addMultipleTracksToPlaylist(serverId, playlistId, tracksToAdd, user.uid);
+      setSuccess(true);
+      setInputValue('');
+      setSearchResults([]);
+      setSelectedTrackIds(new Set());
+    } catch (err: any) {
+      setError(err.message || 'Failed to add tracks');
     } finally {
       setLoading(false);
     }
@@ -66,6 +98,7 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
     if (!user || !val) return;
 
     setError('');
+    setSelectedTrackIds(new Set());
     
     // Check if it's a URL
     const isYT = parseYouTubeVideoId(val);
@@ -100,6 +133,7 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
   const handleSuggest = async () => {
     setSearching(true);
     setError('');
+    setSelectedTrackIds(new Set());
     try {
       const prompt = `Suggest a good song name and artist to listen to. Return ONLY the title and artist, e.g. "Bohemian Rhapsody by Queen".`;
       const suggestion = await nvidiaChat([{ role: 'user', content: prompt }]);
@@ -116,14 +150,14 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
     }
   };
 
-  const handleSelectResult = (result: YouTubeSearchResult) => {
-    addTrack({
-      source: 'youtube',
-      sourceId: result.id,
-      title: result.title,
-      thumbnail: result.thumbnail,
-      duration: 0,
-    });
+  const handleToggleSelection = (resultId: string) => {
+    const next = new Set(selectedTrackIds);
+    if (next.has(resultId)) {
+      next.delete(resultId);
+    } else {
+      next.add(resultId);
+    }
+    setSelectedTrackIds(next);
   };
 
   if (!isOpen) return null;
@@ -148,7 +182,7 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
                 autoFocus
               />
               {error && <p className="font-mono text-[10px] uppercase text-accent mt-1">{error}</p>}
-              {success && <p className="font-mono text-[10px] uppercase text-green-500 mt-1">Track added successfully</p>}
+              {success && <p className="font-mono text-[10px] uppercase text-green-500 mt-1">Track{selectedTrackIds.size > 1 ? 's' : ''} added successfully</p>}
             </div>
             {enableAI && (
               <button
@@ -170,31 +204,55 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
           </form>
 
           <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-            {searchResults.map((result) => (
-              <button
-                key={result.id}
-                onClick={() => handleSelectResult(result)}
-                disabled={loading}
-                className="w-full flex gap-4 p-2 text-left hover:bg-white/5 transition-colors group disabled:opacity-50"
-              >
-                <div className="w-32 aspect-video bg-bg-3 shrink-0 relative overflow-hidden">
-                  <img src={result.thumbnail} alt={result.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-serif text-sm line-clamp-2" dangerouslySetInnerHTML={{ __html: result.title }} />
-                  <p className="font-mono text-[10px] text-text-3 mt-1">{result.channelTitle}</p>
-                </div>
-              </button>
-            ))}
+            {searchResults.map((result) => {
+              const isSelected = selectedTrackIds.has(result.id);
+              return (
+                <button
+                  key={result.id}
+                  onClick={() => handleToggleSelection(result.id)}
+                  disabled={loading}
+                  className={`w-full flex gap-4 p-2 text-left transition-colors group disabled:opacity-50 border ${
+                    isSelected ? 'border-accent bg-accent/10' : 'border-transparent hover:bg-white/5'
+                  }`}
+                >
+                  <div className="w-32 aspect-video bg-bg-3 shrink-0 relative overflow-hidden">
+                    <img src={result.thumbnail} alt={result.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-accent/20 flex items-center justify-center">
+                        <div className="bg-accent text-accent-foreground rounded-full p-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <h4 className="font-serif text-sm line-clamp-2" dangerouslySetInnerHTML={{ __html: result.title }} />
+                    <p className="font-mono text-[10px] text-text-3 mt-1">{result.channelTitle}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full py-3 font-mono text-xs uppercase tracking-widest hover:bg-bg-3 border-t border-rule mt-auto"
-          >
-            Close
-          </button>
+          <div className="flex flex-col gap-2 mt-auto pt-4">
+            {selectedTrackIds.size > 0 && (
+              <button
+                type="button"
+                onClick={handleAddSelected}
+                disabled={loading}
+                className="w-full py-3 bg-accent text-accent-foreground font-mono text-xs uppercase tracking-widest hover:brightness-110 disabled:opacity-50"
+              >
+                {loading ? 'Adding...' : `Add ${selectedTrackIds.size} Selected Track${selectedTrackIds.size > 1 ? 's' : ''}`}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-3 font-mono text-xs uppercase tracking-widest hover:bg-bg-3 border-t border-rule"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
