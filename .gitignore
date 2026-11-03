@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Wrangler local artifacts
+.wrangler
+_worker.bundle

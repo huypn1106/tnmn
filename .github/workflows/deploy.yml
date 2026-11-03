@@ -22,14 +22,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify Secrets
-        run: |
-          if [ -z "${{ secrets.VITE_NVIDIA_API_KEY }}" ]; then
-            echo "::error::VITE_NVIDIA_API_KEY is missing from GitHub Secrets!"
-            exit 1
-          fi
-          echo "All necessary secrets are present."
-
       - name: Build
         run: npm run build
         env:
@@ -42,7 +34,6 @@ jobs:
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
           VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
           VITE_YT_API_KEY: ${{ secrets.VITE_YT_API_KEY }}
-          VITE_NVIDIA_API_KEY: ${{ secrets.VITE_NVIDIA_API_KEY }}
 
       - name: Deploy
         run: npx wrangler pages deploy dist --project-name=tnmn --branch=main --commit-dirty=true
