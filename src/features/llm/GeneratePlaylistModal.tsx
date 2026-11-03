@@ -31,7 +31,7 @@ interface PreviewTrack {
 }
 
 export default function GeneratePlaylistModal({ serverId, playlistId, isOpen, onClose }: Props) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [prompt, setPrompt] = useState('');
   const [count, setCount] = useState(10);
   const [loading, setLoading] = useState(false);
@@ -190,7 +190,11 @@ export default function GeneratePlaylistModal({ serverId, playlistId, isOpen, on
       }
 
       console.log(`[BatchAdd] Adding ${resolvedTracks.length} tracks to ${playlistId}`);
-      await addMultipleTracksToPlaylist(serverId, playlistId, resolvedTracks, user.uid, replace);
+      await addMultipleTracksToPlaylist(serverId, playlistId, resolvedTracks, {
+        uid: user.uid,
+        displayName: profile?.displayName || profile?.username || user.displayName || 'AI Assistant',
+        avatar: profile?.photoURL || user.photoURL || '',
+      }, replace);
       handleClose();
     } catch (err: any) {
       console.error('[BatchAdd] Error:', err);

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build && node -e \"require('fs').copyFileSync('dist/index.html', 'dist/404.html')\"",
     "lint": "eslint .",
+    "test": "esbuild tests/playlistFeatures.test.ts --bundle --platform=node --format=esm --external:firebase --external:firebase/* --external:@firebase/* --outfile=./test_bundle.mjs && node ./test_bundle.mjs && rm ./test_bundle.mjs",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler pages deploy dist --project-name=tnmn --branch=main",
     "cloudflare-skip": "exit 0"

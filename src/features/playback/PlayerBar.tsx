@@ -15,7 +15,7 @@ import { useWorkerInterval } from '../../shared/hooks/useWorkerInterval';
 
 export default function PlayerBar() {
   const { serverId } = useParams<{ serverId: string }>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { server, resolvedId } = useServer(serverId);
   const [player, setPlayer] = useState<PlayerHandle | null>(null);
   const [localTime, setLocalTime] = useState(0);
@@ -356,11 +356,15 @@ export default function PlayerBar() {
                                   title: playbackState.title || '',
                                   thumbnail: playbackState.thumbnail || '',
                                   duration: playbackState.duration || 0,
-                                }, user.uid);
+                                }, {
+                                  uid: user.uid,
+                                  displayName: profile?.displayName || profile?.username || user.displayName || 'Member',
+                                  avatar: profile?.photoURL || user.photoURL || '',
+                                });
                                 setShowAddMenu(false);
-                              } catch (error: any) {
+                              } catch (error: unknown) {
                                 console.error(error);
-                                alert(error.message);
+                                alert(error instanceof Error ? error.message : 'Failed to add track');
                               }
                             }}
                             className="w-full text-left px-3 py-2 font-serif text-[13px] hover:bg-bg-3 truncate transition-colors"

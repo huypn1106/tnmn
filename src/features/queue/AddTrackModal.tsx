@@ -8,9 +8,10 @@ import type { YouTubeSearchResult } from './youtubeApi';
 import { nvidiaChat } from '../llm/nvidia';
 
 import { addTrackToPlaylist, addMultipleTracksToPlaylist } from '../playlists/trackActions';
+import type { TrackAddedBy } from '../playlists/types';
 
 export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }: { serverId: string; playlistId: string; isOpen: boolean; onClose: () => void }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [searchResults, setSearchResults] = useState<YouTubeSearchResult[]>([]);
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set());
@@ -20,15 +21,24 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
   const [success, setSuccess] = useState(false);
   const enableAI = import.meta.env.VITE_ENABLE_AI_FEATURE === 'true';
 
-  useEffect(() => {
-    if (!isOpen) {
-      setInputValue('');
-      setSearchResults([]);
-      setSelectedTrackIds(new Set());
-      setError('');
-      setSuccess(false);
-    }
-  }, [isOpen]);
+  const getAddedByInfo = (): TrackAddedBy | null => {
+    if (!user) return null;
+    return {
+      uid: user.uid,
+      displayName: profile?.displayName || profile?.username || user.displayName || 'Anonymous',
+      avatar: profile?.photoURL || user.photoURL || '',
+      photoURL: profile?.photoURL || user.photoURL || '',
+    };
+  };
+
+  const handleClose = () => {
+    setInputValue('');
+    setSearchResults([]);
+    setSelectedTrackIds(new Set());
+    setError('');
+    setSuccess(false);
+    onClose();
+  };
 
   useEffect(() => {
     if (success) {
@@ -38,7 +48,8 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
   }, [success]);
 
   const addTrack = async (meta: TrackMetadata) => {
-    if (!user || !playlistId) return;
+    const addedBy = getAddedByInfo();
+    if (!addedBy || !playlistId) return;
     
     setLoading(true);
     setError('');
@@ -50,21 +61,23 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
         title: meta.title,
         thumbnail: meta.thumbnail,
         duration: meta.duration,
-      }, user.uid);
+      }, addedBy);
 
       setSuccess(true);
       setInputValue('');
       setSearchResults([]);
       setSelectedTrackIds(new Set());
-    } catch (err: any) {
-      setError(err.message || 'Failed to add track');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to add track';
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleAddSelected = async () => {
-    if (!user || !playlistId || selectedTrackIds.size === 0) return;
+    const addedBy = getAddedByInfo();
+    if (!addedBy || !playlistId || selectedTrackIds.size === 0) return;
     setLoading(true);
     setError('');
     setSuccess(false);
@@ -80,13 +93,14 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
       }));
 
     try {
-      await addMultipleTracksToPlaylist(serverId, playlistId, tracksToAdd, user.uid);
+      await addMultipleTracksToPlaylist(serverId, playlistId, tracksToAdd, addedBy);
       setSuccess(true);
       setInputValue('');
       setSearchResults([]);
       setSelectedTrackIds(new Set());
-    } catch (err: any) {
-      setError(err.message || 'Failed to add tracks');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to add tracks';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -109,8 +123,9 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
       try {
         const meta = await fetchTrackMetadata(val);
         await addTrack(meta);
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch track metadata');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Failed to fetch track metadata';
+        setError(msg);
         setLoading(false);
       }
     } else {
@@ -122,8 +137,9 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
         if (results.length === 0) {
           setError('No results found');
         }
-      } catch (err: any) {
-        setError(err.message || 'Search failed');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Search failed';
+        setError(msg);
       } finally {
         setSearching(false);
       }
@@ -143,8 +159,9 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
       if (results.length === 0) {
         setError('No results found for suggestion');
       }
-    } catch (err: any) {
-      setError(err.message || 'Suggestion failed');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Suggestion failed';
+      setError(msg);
     } finally {
       setSearching(false);
     }
@@ -207,11 +224,10 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
             {searchResults.map((result) => {
               const isSelected = selectedTrackIds.has(result.id);
               return (
-                <button
+                <div
                   key={result.id}
                   onClick={() => handleToggleSelection(result.id)}
-                  disabled={loading}
-                  className={`w-full flex gap-4 p-2 text-left transition-colors group disabled:opacity-50 border ${
+                  className={`w-full flex items-center gap-4 p-2 text-left transition-colors group cursor-pointer border ${
                     isSelected ? 'border-accent bg-accent/10' : 'border-transparent hover:bg-white/5'
                   }`}
                 >
@@ -229,7 +245,25 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
                     <h4 className="font-serif text-sm line-clamp-2" dangerouslySetInnerHTML={{ __html: result.title }} />
                     <p className="font-mono text-[10px] text-text-3 mt-1">{result.channelTitle}</p>
                   </div>
-                </button>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await addTrack({
+                        source: 'youtube',
+                        sourceId: result.id,
+                        title: result.title,
+                        thumbnail: result.thumbnail,
+                        duration: 0,
+                      });
+                    }}
+                    className="h-8 px-3 border border-accent/40 bg-accent/5 text-accent hover:bg-accent hover:text-accent-foreground font-mono text-[10px] uppercase tracking-wider shrink-0 transition-colors"
+                    title="Add now"
+                  >
+                    + Add
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -247,7 +281,7 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
             )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="w-full py-3 font-mono text-xs uppercase tracking-widest hover:bg-bg-3 border-t border-rule"
             >
               Close

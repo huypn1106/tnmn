@@ -6,7 +6,7 @@ export interface Playlist {
   description: string | null;
   coverURL: string | null;
   createdBy: string;
-  createdAt: Timestamp | any;
+  createdAt: Timestamp | Date | { seconds: number; nanoseconds?: number } | null;
   trackCount: number;
   totalDuration: number;
   source: 'manual' | 'youtube_import' | 'llm' | 'shared';
@@ -17,6 +17,13 @@ export interface Playlist {
   sharedPlaylistId?: string;
 }
 
+export interface TrackAddedBy {
+  uid: string;
+  displayName?: string;
+  avatar?: string;
+  photoURL?: string;
+}
+
 export interface Track {
   id: string;
   source: 'youtube' | 'soundcloud' | 'url';
@@ -24,8 +31,9 @@ export interface Track {
   title: string;
   thumbnail: string;
   duration: number;
-  addedBy: string;
+  addedBy: string | TrackAddedBy;
   addedByName?: string;
   order: number;
-  addedAt: Timestamp | any;
+  addedAt: Timestamp | Date | { seconds: number; nanoseconds?: number } | null;
 }
+
