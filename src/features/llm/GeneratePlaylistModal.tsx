@@ -192,6 +192,7 @@ export default function GeneratePlaylistModal({ serverId, playlistId, isOpen, on
       console.log(`[BatchAdd] Adding ${resolvedTracks.length} tracks to ${playlistId}`);
       await addMultipleTracksToPlaylist(serverId, playlistId, resolvedTracks, {
         uid: user.uid,
+        username: profile?.username || user.displayName || 'AI Assistant',
         displayName: profile?.displayName || profile?.username || user.displayName || 'AI Assistant',
         avatar: profile?.photoURL || user.photoURL || '',
       }, replace);

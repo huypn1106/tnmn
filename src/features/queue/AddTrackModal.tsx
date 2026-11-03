@@ -23,9 +23,11 @@ export default function AddTrackModal({ serverId, playlistId, isOpen, onClose }:
 
   const getAddedByInfo = (): TrackAddedBy | null => {
     if (!user) return null;
+    const username = profile?.username || user.displayName || 'anonymous';
     return {
       uid: user.uid,
-      displayName: profile?.displayName || profile?.username || user.displayName || 'Anonymous',
+      username,
+      displayName: profile?.displayName || username,
       avatar: profile?.photoURL || user.photoURL || '',
       photoURL: profile?.photoURL || user.photoURL || '',
     };

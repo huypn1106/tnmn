@@ -3,25 +3,28 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../app/firebase';
 import type { Track, TrackAddedBy } from './types';
 
-export function getTrackAddedBy(track: Track): { uid: string; displayName: string; avatar: string } {
+export function getTrackAddedBy(track: Track): { uid: string; username: string; displayName: string; avatar: string } {
   if (typeof track.addedBy === 'object' && track.addedBy !== null) {
     const raw = track.addedBy as TrackAddedBy;
+    const username = raw.username || raw.displayName || track.addedByName || 'member';
     return {
       uid: raw.uid || '',
-      displayName: raw.displayName || track.addedByName || 'Member',
+      username,
+      displayName: raw.displayName || username,
       avatar: raw.avatar || raw.photoURL || '',
     };
   }
 
   return {
     uid: typeof track.addedBy === 'string' ? track.addedBy : '',
-    displayName: track.addedByName || 'Member',
+    username: track.addedByName || 'member',
+    displayName: track.addedByName || 'member',
     avatar: '',
   };
 }
 
 export function useUserProfiles(uids: string[]) {
-  const [profiles, setProfiles] = useState<Record<string, { displayName: string; photoURL: string }>>({});
+  const [profiles, setProfiles] = useState<Record<string, { username: string; displayName: string; photoURL: string }>>({});
   const uidsKey = uids.filter(Boolean).sort().join(',');
 
   useEffect(() => {
@@ -33,13 +36,14 @@ export function useUserProfiles(uids: string[]) {
       try {
         const snap = await getDoc(doc(db, 'users', uid));
         if (snap.exists()) {
-          const data = snap.data() as { displayName?: string; username?: string; photoURL?: string };
+          const data = snap.data() as { username?: string; displayName?: string; photoURL?: string };
           setProfiles((prev) => {
             if (prev[uid]) return prev;
             return {
               ...prev,
               [uid]: {
-                displayName: data.displayName || data.username || 'Member',
+                username: data.username || data.displayName || 'member',
+                displayName: data.displayName || data.username || 'member',
                 photoURL: data.photoURL || '',
               },
             };

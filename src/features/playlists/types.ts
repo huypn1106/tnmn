@@ -19,6 +19,7 @@ export interface Playlist {
 
 export interface TrackAddedBy {
   uid: string;
+  username?: string;
   displayName?: string;
   avatar?: string;
   photoURL?: string;

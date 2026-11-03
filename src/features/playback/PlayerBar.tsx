@@ -358,6 +358,7 @@ export default function PlayerBar() {
                                   duration: playbackState.duration || 0,
                                 }, {
                                   uid: user.uid,
+                                  username: profile?.username || user.displayName || 'member',
                                   displayName: profile?.displayName || profile?.username || user.displayName || 'Member',
                                   avatar: profile?.photoURL || user.photoURL || '',
                                 });

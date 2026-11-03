@@ -4,16 +4,19 @@ import type { Track, TrackAddedBy } from './types';
 
 function normalizeAddedBy(addedBy: string | TrackAddedBy): TrackAddedBy {
   if (typeof addedBy === 'object' && addedBy !== null) {
+    const rawUsername = addedBy.username || addedBy.displayName || 'member';
     return {
       uid: addedBy.uid || '',
-      displayName: addedBy.displayName || 'Member',
+      username: rawUsername,
+      displayName: addedBy.displayName || rawUsername,
       avatar: addedBy.avatar || addedBy.photoURL || '',
       photoURL: addedBy.avatar || addedBy.photoURL || '',
     };
   }
   return {
     uid: typeof addedBy === 'string' ? addedBy : '',
-    displayName: 'Member',
+    username: 'member',
+    displayName: 'member',
     avatar: '',
     photoURL: '',
   };

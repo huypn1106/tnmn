@@ -28,6 +28,7 @@ export function RecommendationsPanel({ serverId, playlistId }: Props) {
       duration: 0,
     }, {
       uid: user.uid,
+      username: profile?.username || user.displayName || 'member',
       displayName: profile?.displayName || profile?.username || user.displayName || 'Member',
       avatar: profile?.photoURL || user.photoURL || '',
     });

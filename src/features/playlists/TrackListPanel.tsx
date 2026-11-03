@@ -47,7 +47,7 @@ interface SortableTrackItemProps {
   isDJ: boolean;
   canEdit: boolean;
   playbackPlaying: boolean;
-  userProfiles: Record<string, { displayName: string; photoURL: string }>;
+  userProfiles: Record<string, { username: string; displayName: string; photoURL: string }>;
   onPlay: (item: Track) => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
@@ -91,10 +91,10 @@ function SortableTrackItem({
 
   const addedInfo = getTrackAddedBy(item);
   const profileFallback = userProfiles[addedInfo.uid];
-  const displayName =
-    addedInfo.displayName !== 'Member'
-      ? addedInfo.displayName
-      : profileFallback?.displayName || 'Member';
+  const username =
+    addedInfo.username !== 'member'
+      ? addedInfo.username
+      : profileFallback?.username || addedInfo.displayName || profileFallback?.displayName || 'member';
   const avatar = addedInfo.avatar || profileFallback?.photoURL || '';
 
   const relativeTime = formatRelativeTime(item.addedAt);
@@ -102,8 +102,8 @@ function SortableTrackItem({
   const durationStr = formatDuration(item.duration);
 
   const timeTooltip = exactDate
-    ? `Added by ${displayName} • ${exactDate}`
-    : `Added by ${displayName}`;
+    ? `Added by @${username} • ${exactDate}`
+    : `Added by @${username}`;
 
   const setCombinedRef = (el: HTMLDivElement | null) => {
     setNodeRef(el);
@@ -213,53 +213,55 @@ function SortableTrackItem({
             </span>
           )}
 
-          {/* Mobile inline addedBy badge */}
+          {/* Mobile inline addedBy (small, no border) */}
           <div
-            className="md:hidden flex items-center gap-1.5 font-mono text-[9px] text-text-3"
+            className="md:hidden flex items-center gap-1 font-mono text-[8px] text-text-3"
             title={timeTooltip}
           >
             <span>•</span>
-            {avatar ? (
-              <img
-                src={avatar}
-                alt=""
-                className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
-              />
-            ) : (
-              <span className="w-3.5 h-3.5 rounded-full bg-accent/20 text-accent text-[8px] font-bold flex items-center justify-center shrink-0">
-                {displayName.charAt(0).toUpperCase()}
-              </span>
-            )}
-            <span className="truncate max-w-[80px]">{displayName}</span>
+            <div className="relative h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full bg-bg-3">
+              {avatar ? (
+                <img
+                  src={avatar}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center font-mono text-[7px] font-bold text-accent uppercase">
+                  {username.charAt(0)}
+                </div>
+              )}
+            </div>
+            <span className="truncate max-w-[70px]">@{username}</span>
           </div>
         </div>
       </div>
 
-      {/* Added By Badge (Desktop/Tablet) */}
+      {/* Added By (Desktop/Tablet - small, no border) */}
       <div
-        className="hidden md:flex items-center gap-2 shrink-0 px-2.5 py-1 bg-bg-3/70 border border-rule/50 rounded-full text-text-3 group-hover:border-rule transition-colors"
+        className="hidden md:flex items-center gap-1.5 shrink-0 text-text-3"
         title={timeTooltip}
       >
-        <div className="relative h-5 w-5 shrink-0 overflow-hidden rounded-full border border-rule/50 bg-bg-2">
+        <div className="relative h-4 w-4 shrink-0 overflow-hidden rounded-full bg-bg-3">
           {avatar ? (
             <img
               src={avatar}
-              alt={displayName}
+              alt={username}
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center font-mono text-[9px] font-bold text-accent uppercase">
-              {displayName.charAt(0)}
+            <div className="flex h-full w-full items-center justify-center font-mono text-[8px] font-bold text-accent uppercase">
+              {username.charAt(0)}
             </div>
           )}
         </div>
-        <div className="flex flex-col text-left">
-          <span className="font-mono text-[10px] text-text-2 max-w-[85px] lg:max-w-[120px] truncate leading-tight">
-            {displayName}
+        <div className="flex items-baseline gap-1">
+          <span className="font-mono text-[9px] text-text-3 hover:text-text-2 transition-colors max-w-[85px] lg:max-w-[110px] truncate">
+            @{username}
           </span>
           {relativeTime && (
-            <span className="font-mono text-[8px] text-text-3 leading-tight">
-              {relativeTime}
+            <span className="font-mono text-[8px] text-text-3/60">
+              • {relativeTime}
             </span>
           )}
         </div>

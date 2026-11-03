@@ -34,6 +34,7 @@ const modernTrack: Track = {
 const res1 = getTrackAddedBy(modernTrack);
 assert.equal(res1.uid, 'user-101');
 assert.equal(res1.displayName, 'Nguyen Van A');
+assert.equal(res1.username, 'Nguyen Van A'); // falls back to displayName when no username field
 assert.equal(res1.avatar, 'https://lh3.googleusercontent.com/a/avatar1.png');
 console.log('✅ Case 1.1 Passed: Modern track with object addedBy (uid, displayName, avatar)');
 
@@ -56,6 +57,7 @@ const photoUrlTrack: Track = {
 const res2 = getTrackAddedBy(photoUrlTrack);
 assert.equal(res2.uid, 'user-102');
 assert.equal(res2.displayName, 'Tran Thi B');
+assert.equal(res2.username, 'Tran Thi B'); // falls back to displayName when no username field
 assert.equal(res2.avatar, 'https://lh3.googleusercontent.com/a/photo2.png');
 console.log('✅ Case 1.2 Passed: Object addedBy using photoURL alias');
 
@@ -75,6 +77,7 @@ const legacyTrack: Track = {
 const res3 = getTrackAddedBy(legacyTrack);
 assert.equal(res3.uid, 'legacy-uid-999');
 assert.equal(res3.displayName, 'Old Member');
+assert.equal(res3.username, 'Old Member'); // string legacy: uses addedByName as username
 assert.equal(res3.avatar, '');
 console.log('✅ Case 1.3 Passed: Legacy track with string addedBy & addedByName');
 
@@ -92,9 +95,10 @@ const legacyAnonTrack: Track = {
 };
 const res4 = getTrackAddedBy(legacyAnonTrack);
 assert.equal(res4.uid, 'anon-uid-888');
-assert.equal(res4.displayName, 'Member');
+assert.equal(res4.displayName, 'member');
+assert.equal(res4.username, 'member'); // no addedByName -> falls back to 'member'
 assert.equal(res4.avatar, '');
-console.log('✅ Case 1.4 Passed: Legacy track without addedByName falls back to "Member"');
+console.log('✅ Case 1.4 Passed: Legacy track without addedByName falls back to "member"');
 
 
 // ==========================================
@@ -215,14 +219,16 @@ function normalizeAddedBy(addedBy: string | TrackAddedBy): TrackAddedBy {
   if (typeof addedBy === 'object' && addedBy !== null) {
     return {
       uid: addedBy.uid || '',
-      displayName: addedBy.displayName || 'Member',
+      username: addedBy.username || addedBy.displayName || 'member',
+      displayName: addedBy.displayName || addedBy.username || 'member',
       avatar: addedBy.avatar || addedBy.photoURL || '',
       photoURL: addedBy.avatar || addedBy.photoURL || '',
     };
   }
   return {
     uid: typeof addedBy === 'string' ? addedBy : '',
-    displayName: 'Member',
+    username: 'member',
+    displayName: 'member',
     avatar: '',
     photoURL: '',
   };
@@ -235,11 +241,13 @@ const normObj = normalizeAddedBy({
 });
 assert.equal(normObj.uid, 'user-xyz');
 assert.equal(normObj.displayName, 'DJ Cool');
+assert.equal(normObj.username, 'DJ Cool'); // falls back to displayName when no username
 assert.equal(normObj.avatar, 'https://avatar.xyz/pic.jpg');
 
 const normStr = normalizeAddedBy('user-raw-string');
 assert.equal(normStr.uid, 'user-raw-string');
-assert.equal(normStr.displayName, 'Member');
+assert.equal(normStr.displayName, 'member');
+assert.equal(normStr.username, 'member');
 assert.equal(normStr.avatar, '');
 
 console.log('✅ Case 4.1 Passed: Normalizer cleanly processes both objects and strings');
