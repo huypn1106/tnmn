@@ -1,0 +1,5 @@
+name = "tnmn"
+pages_build_output_dir = "dist"
+
+[env.production]
+name = "tnmn"
