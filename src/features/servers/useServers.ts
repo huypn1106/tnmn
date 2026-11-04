@@ -14,6 +14,12 @@ export interface Server {
   createdAt: any;
   slug?: string;
   activePlaylistId?: string;
+  viewMode?: 'classic' | 'stage';
+  viewModeUpdatedAt?: number;
+  stageBackground?: string;
+  ledText?: string;
+  ledMode?: 'marquee' | 'static' | 'track';
+  ledSpeed?: number;
 }
 
 export function useServers() {

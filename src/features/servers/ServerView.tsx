@@ -1,5 +1,8 @@
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { ref, onValue } from 'firebase/database';
+import { db, rtdb } from '../../app/firebase';
 import { usePlaybackSync } from '../playback/usePlaybackSync';
 
 import { useAuth } from '../auth/useAuth';
@@ -12,6 +15,7 @@ import { migrateQueueToPlaylist } from '../playlists/migrateQueue';
 import AddTrackModal from '../queue/AddTrackModal';
 import GeneratePlaylistModal from '../llm/GeneratePlaylistModal';
 import QuoteDisplay from '../../shared/QuoteDisplay';
+import StageVisualizer from '../stage/StageVisualizer';
 
 export default function ServerView() {
   const { serverId } = useParams<{ serverId: string }>();
@@ -21,8 +25,79 @@ export default function ServerView() {
     viewedPlaylistId: string | null;
     setViewedPlaylistId: (id: string) => void;
   }>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { server, resolvedId, loading: serverLoading } = useServer(serverId);
+
+  const [viewMode, setViewMode] = useState<'classic' | 'stage'>(() => {
+    return (localStorage.getItem('tnmn_view_mode') as 'classic' | 'stage') || 'classic';
+  });
+
+  const [memberProfiles, setMemberProfiles] = useState<Array<{ uid: string; displayName?: string; username?: string; photoURL?: string }>>([]);
+  const [presence, setPresence] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    if (!server?.members || server.members.length === 0) {
+      setMemberProfiles([]);
+      setPresence({});
+      return;
+    }
+    let isCancelled = false;
+    Promise.all(
+      server.members.map(async (uid) => {
+        try {
+          const snap = await getDoc(doc(db, 'users', uid));
+          const data = snap.exists() ? snap.data() : {};
+          const uname = data.username || data.displayName || 'user';
+          return {
+            uid,
+            ...data,
+            username: uname,
+            displayName: uname,
+          };
+        } catch {
+          return { uid, username: 'spirit', displayName: 'spirit' };
+        }
+      })
+    ).then((profiles) => {
+      if (!isCancelled) setMemberProfiles(profiles);
+    });
+
+    const unsubscribes = server.members.map((uid) => {
+      const pRef = ref(rtdb, `presence/${uid}`);
+      return onValue(pRef, (snap) => {
+        setPresence((prev) => ({ ...prev, [uid]: snap.val() }));
+      });
+    });
+
+    return () => {
+      isCancelled = true;
+      unsubscribes.forEach((unsub) => unsub());
+    };
+  }, [server?.members]);
+
+  // Only real listeners currently in this room
+  const activeListeners = useMemo(() => {
+    const currentServerIds = new Set([serverId, resolvedId, server?.id, server?.slug].filter(Boolean));
+
+    const online = memberProfiles.filter((member) => {
+      if (member.uid === user?.uid) return true;
+      const status = presence[member.uid];
+      return status?.online && currentServerIds.has(status?.activeServerId);
+    });
+
+    // Make sure current user is always included if logged in
+    if (user && !online.some((m) => m.uid === user.uid)) {
+      const myUsername = profile?.username || user.displayName || 'Bạn';
+      online.unshift({
+        uid: user.uid,
+        displayName: myUsername,
+        username: myUsername,
+        photoURL: profile?.photoURL || user.photoURL || '',
+      });
+    }
+
+    return online;
+  }, [memberProfiles, presence, user, profile, serverId, resolvedId, server]);
 
   useEffect(() => {
     const isCurrentServer = server && (server.id === serverId || server.slug === serverId);
@@ -48,7 +123,135 @@ export default function ServerView() {
   const enableAI = import.meta.env.VITE_ENABLE_AI_FEATURE === 'true';
 
   const isDJ = !!user && !!server && server.roles?.[user.uid] === 'dj';
-  const isOwner = !!user && !!server && server.ownerId === user.uid;
+  const isOwner = !!user && !!server && (server.ownerId === user.uid || !server.ownerId || isDJ || server.members?.[0] === user.uid);
+
+  // Real-time synchronization of room mode (if room owner switches to stage/classic, all members follow)
+  const lastSyncedViewModeTimeRef = useRef<number>(0);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+
+  // Stage Background state with optimistic local cache
+  const [localStageBg, setLocalStageBg] = useState<string>(() => {
+    return localStorage.getItem(`tnmn_stage_bg_${serverId}`) || 'default';
+  });
+
+  useEffect(() => {
+    if (server?.stageBackground) {
+      setLocalStageBg(server.stageBackground);
+      const targetId = resolvedId || server?.id || serverId;
+      if (targetId) {
+        localStorage.setItem(`tnmn_stage_bg_${targetId}`, server.stageBackground);
+      }
+    }
+  }, [server?.stageBackground, resolvedId, serverId, server?.id]);
+
+  useEffect(() => {
+    if (!server?.viewMode) return;
+
+    const serverTime = server.viewModeUpdatedAt || 1;
+    if (serverTime > lastSyncedViewModeTimeRef.current) {
+      const isInitial = lastSyncedViewModeTimeRef.current === 0;
+      lastSyncedViewModeTimeRef.current = serverTime;
+
+      setViewMode(server.viewMode);
+      localStorage.setItem('tnmn_view_mode', server.viewMode);
+
+      // Notify members when owner dynamically switches room mode
+      if (!isInitial && !isOwner) {
+        setSyncNotice(
+          server.viewMode === 'stage'
+            ? 'Chủ phòng đã chuyển phòng sang Sân khấu 🎧'
+            : 'Chủ phòng đã chuyển về Classic ☰'
+        );
+        setTimeout(() => setSyncNotice(null), 3500);
+      }
+    }
+  }, [server?.viewMode, server?.viewModeUpdatedAt, isOwner]);
+
+  const handleViewModeChange = async (mode: 'classic' | 'stage') => {
+    setViewMode(mode);
+    localStorage.setItem('tnmn_view_mode', mode);
+
+    // If room owner switches mode, broadcast to all members in the room via Firestore
+    const targetDocId = resolvedId || server?.id;
+    if (isOwner && targetDocId) {
+      try {
+        const now = Date.now();
+        lastSyncedViewModeTimeRef.current = now;
+        await updateDoc(doc(db, 'servers', targetDocId), {
+          viewMode: mode,
+          viewModeUpdatedAt: now,
+        });
+      } catch (err) {
+        console.error('Failed to sync room viewMode:', err);
+      }
+    }
+  };
+
+  const handleUpdateStageBackground = async (bg: string) => {
+    setLocalStageBg(bg);
+    const targetDocId = resolvedId || server?.id || serverId;
+    if (targetDocId) {
+      try {
+        localStorage.setItem(`tnmn_stage_bg_${targetDocId}`, bg);
+        await updateDoc(doc(db, 'servers', targetDocId), {
+          stageBackground: bg,
+        });
+      } catch (err) {
+        console.error('Failed to update stage background in Firestore:', err);
+      }
+    }
+  };
+
+  // Stage LED Text Customization state with optimistic local cache
+  const [localLedText, setLocalLedText] = useState<string>(() => {
+    return localStorage.getItem(`tnmn_stage_led_${serverId}`) || '';
+  });
+  const [localLedMode, setLocalLedMode] = useState<'marquee' | 'static' | 'track'>(() => {
+    return (localStorage.getItem(`tnmn_stage_led_mode_${serverId}`) as any) || 'marquee';
+  });
+  const [localLedSpeed, setLocalLedSpeed] = useState<number>(() => {
+    const saved = localStorage.getItem(`tnmn_stage_led_speed_${serverId}`);
+    return saved ? Number(saved) : 70;
+  });
+
+  useEffect(() => {
+    if (server?.ledText !== undefined) {
+      setLocalLedText(server.ledText);
+      const targetId = resolvedId || server?.id || serverId;
+      if (targetId) localStorage.setItem(`tnmn_stage_led_${targetId}`, server.ledText);
+    }
+    if (server?.ledMode) {
+      setLocalLedMode(server.ledMode);
+      const targetId = resolvedId || server?.id || serverId;
+      if (targetId) localStorage.setItem(`tnmn_stage_led_mode_${targetId}`, server.ledMode);
+    }
+    if (server?.ledSpeed) {
+      setLocalLedSpeed(server.ledSpeed);
+      const targetId = resolvedId || server?.id || serverId;
+      if (targetId) localStorage.setItem(`tnmn_stage_led_speed_${targetId}`, String(server.ledSpeed));
+    }
+  }, [server?.ledText, server?.ledMode, server?.ledSpeed, resolvedId, serverId, server?.id]);
+
+  const handleUpdateLedConfig = async (config: { text: string; mode: 'marquee' | 'static' | 'track'; speed: number }) => {
+    setLocalLedText(config.text);
+    setLocalLedMode(config.mode);
+    setLocalLedSpeed(config.speed);
+    const targetDocId = resolvedId || server?.id || serverId;
+    if (targetDocId) {
+      try {
+        localStorage.setItem(`tnmn_stage_led_${targetDocId}`, config.text);
+        localStorage.setItem(`tnmn_stage_led_mode_${targetDocId}`, config.mode);
+        localStorage.setItem(`tnmn_stage_led_speed_${targetDocId}`, String(config.speed));
+        await updateDoc(doc(db, 'servers', targetDocId), {
+          ledText: config.text,
+          ledMode: config.mode,
+          ledSpeed: config.speed,
+        });
+      } catch (err) {
+        console.error('Failed to update stage LED config in Firestore:', err);
+      }
+    }
+  };
   
   const { playbackState } = usePlaybackSync(resolvedId || undefined, isDJ, null, true);
   const activePlaylistId = playbackState?.playlistId || server?.activePlaylistId || null;
@@ -88,21 +291,60 @@ export default function ServerView() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
+      {/* Real-time Room Mode Sync Toast for Members */}
+      {syncNotice && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300 pointer-events-none">
+          <div className="flex items-center gap-2 bg-[#170f2b]/95 border border-accent/40 shadow-2xl backdrop-blur-md text-white text-xs px-4 py-2 rounded-full font-mono">
+            <span className="flex h-2 w-2 rounded-full bg-accent animate-pulse" />
+            <span>{syncNotice}</span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-rule p-3 px-4 md:py-4 md:px-8 short:py-2">
-        <div className="space-y-1 shrink-0 w-[240px]">
-          <h2 className="font-serif text-3xl md:text-4xl short:text-2xl tracking-tighter leading-none">{server?.name || 'Queue'}</h2>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-text-3">
+      <header className="flex flex-wrap sm:flex-nowrap items-center justify-between border-b border-rule p-2.5 px-3 md:py-4 md:px-8 short:py-2 gap-2">
+        <div className="space-y-0.5 min-w-0 flex-1 sm:w-[200px] md:w-[240px] sm:flex-initial">
+          <h2 className="font-serif text-xl sm:text-2xl md:text-3xl short:text-xl tracking-tight leading-tight truncate">
+            {server?.name || 'Queue'}
+          </h2>
+          <p className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest text-text-3 truncate">
             {server?.slug ? `/server/${server.slug}` : 'Session Dynamics'}
           </p>
         </div>
         
-        <div className="hidden md:flex flex-1 justify-center px-6 max-w-lg">
+        <div className="hidden md:flex flex-1 justify-center px-4 max-w-lg">
           <QuoteDisplay className="text-center" />
         </div>
         
-        <div className="flex items-center gap-2 md:gap-4 shrink-0 w-[240px] justify-end">
+        <div className="flex items-center gap-1.5 md:gap-3 shrink-0 justify-end">
+          {/* Mode Switcher: Classic vs Sân khấu */}
+          <div className="flex items-center rounded-xl bg-bg-3 p-0.5 border border-rule">
+            <button
+              onClick={() => handleViewModeChange('classic')}
+              className={`px-2 py-1 sm:px-3 sm:py-1.5 font-mono text-[9px] sm:text-[10px] uppercase tracking-wider rounded-lg transition-all ${
+                viewMode === 'classic'
+                  ? 'bg-accent text-accent-foreground font-bold shadow-sm'
+                  : 'text-text-3 hover:text-text'
+              }`}
+              title={isOwner ? "Chế độ Classic (Chủ phòng đổi sẽ chuyển cả phòng)" : "Chế độ Classic (Hàng chờ & Danh sách bài hát)"}
+            >
+              Classic
+            </button>
+            <button
+              onClick={() => handleViewModeChange('stage')}
+              className={`flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 font-mono text-[9px] sm:text-[10px] uppercase tracking-wider rounded-lg transition-all ${
+                viewMode === 'stage'
+                  ? 'bg-accent text-accent-foreground font-bold shadow-sm'
+                  : 'text-text-3 hover:text-text'
+              }`}
+              title={isOwner ? "Chế độ Sân khấu (Chủ phòng đổi sẽ chuyển cả phòng)" : "Chế độ Sân khấu (Visualizer 2D)"}
+            >
+              <span>Sân khấu 🎧</span>
+              <span className="flex h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+            </button>
+          </div>
+
           {isDJ && viewedPlaylist && (
             <div className="flex items-center gap-2">
               {enableAI && (
@@ -169,7 +411,27 @@ export default function ServerView() {
       <div className="flex flex-1 overflow-hidden">
         {/* PlaylistSidebar is now in ServerList (global sidebar) */}
         
-        {viewedPlaylist ? (
+        {viewMode === 'stage' ? (
+          <StageVisualizer
+            serverId={resolvedId || serverId}
+            serverName={server?.name}
+            trackTitle={playbackState?.title}
+            isPlaying={playbackState?.playing}
+            playbackPosition={playbackState?.position}
+            updatedAt={playbackState?.updatedAt}
+            roomMembers={activeListeners}
+            currentUserName={profile?.username || user?.displayName || 'Bạn'}
+            currentUserId={user?.uid}
+            isOwner={isOwner}
+            stageBackground={server?.stageBackground || localStageBg || 'default'}
+            onUpdateBackground={handleUpdateStageBackground}
+            ledText={server?.ledText !== undefined ? server.ledText : localLedText}
+            ledMode={server?.ledMode || localLedMode || 'marquee'}
+            ledSpeed={server?.ledSpeed || localLedSpeed || 70}
+            onUpdateLedConfig={handleUpdateLedConfig}
+            onSwitchToClassic={() => handleViewModeChange('classic')}
+          />
+        ) : viewedPlaylist ? (
           <TrackListPanel 
             serverId={resolvedId} 
             playlist={viewedPlaylist} 
