@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, onValue } from 'firebase/database';
 import { db, rtdb } from '../../app/firebase';
@@ -125,10 +125,6 @@ export default function ServerView() {
   const isDJ = !!user && !!server && server.roles?.[user.uid] === 'dj';
   const isOwner = !!user && !!server && (server.ownerId === user.uid || !server.ownerId || isDJ || server.members?.[0] === user.uid);
 
-  // Real-time synchronization of room mode (if room owner switches to stage/classic, all members follow)
-  const lastSyncedViewModeTimeRef = useRef<number>(0);
-  const [syncNotice, setSyncNotice] = useState<string | null>(null);
-
   // Stage Background state with optimistic local cache
   const [localStageBg, setLocalStageBg] = useState<string>(() => {
     return localStorage.getItem(`tnmn_stage_bg_${serverId}`) || 'default';
@@ -144,47 +140,9 @@ export default function ServerView() {
     }
   }, [server?.stageBackground, resolvedId, serverId, server?.id]);
 
-  useEffect(() => {
-    if (!server?.viewMode) return;
-
-    const serverTime = server.viewModeUpdatedAt || 1;
-    if (serverTime > lastSyncedViewModeTimeRef.current) {
-      const isInitial = lastSyncedViewModeTimeRef.current === 0;
-      lastSyncedViewModeTimeRef.current = serverTime;
-
-      setViewMode(server.viewMode);
-      localStorage.setItem('tnmn_view_mode', server.viewMode);
-
-      // Notify members when owner dynamically switches room mode
-      if (!isInitial && !isOwner) {
-        setSyncNotice(
-          server.viewMode === 'stage'
-            ? 'Chủ phòng đã chuyển phòng sang Sân khấu 🎧'
-            : 'Chủ phòng đã chuyển về Classic ☰'
-        );
-        setTimeout(() => setSyncNotice(null), 3500);
-      }
-    }
-  }, [server?.viewMode, server?.viewModeUpdatedAt, isOwner]);
-
-  const handleViewModeChange = async (mode: 'classic' | 'stage') => {
+  const handleViewModeChange = (mode: 'classic' | 'stage') => {
     setViewMode(mode);
     localStorage.setItem('tnmn_view_mode', mode);
-
-    // If room owner switches mode, broadcast to all members in the room via Firestore
-    const targetDocId = resolvedId || server?.id;
-    if (isOwner && targetDocId) {
-      try {
-        const now = Date.now();
-        lastSyncedViewModeTimeRef.current = now;
-        await updateDoc(doc(db, 'servers', targetDocId), {
-          viewMode: mode,
-          viewModeUpdatedAt: now,
-        });
-      } catch (err) {
-        console.error('Failed to sync room viewMode:', err);
-      }
-    }
   };
 
   const handleUpdateStageBackground = async (bg: string) => {
@@ -292,16 +250,6 @@ export default function ServerView() {
 
   return (
     <div className="relative flex h-full flex-col">
-      {/* Real-time Room Mode Sync Toast for Members */}
-      {syncNotice && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300 pointer-events-none">
-          <div className="flex items-center gap-2 bg-[#170f2b]/95 border border-accent/40 shadow-2xl backdrop-blur-md text-white text-xs px-4 py-2 rounded-full font-mono">
-            <span className="flex h-2 w-2 rounded-full bg-accent animate-pulse" />
-            <span>{syncNotice}</span>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <header className="flex flex-wrap sm:flex-nowrap items-center justify-between border-b border-rule p-2.5 px-3 md:py-4 md:px-8 short:py-2 gap-2">
         <div className="space-y-0.5 min-w-0 flex-1 sm:w-[200px] md:w-[240px] sm:flex-initial">
@@ -327,7 +275,7 @@ export default function ServerView() {
                   ? 'bg-accent text-accent-foreground font-bold shadow-sm'
                   : 'text-text-3 hover:text-text'
               }`}
-              title={isOwner ? "Chế độ Classic (Chủ phòng đổi sẽ chuyển cả phòng)" : "Chế độ Classic (Hàng chờ & Danh sách bài hát)"}
+              title="Chế độ Classic (Hàng chờ & Danh sách bài hát)"
             >
               Classic
             </button>
@@ -338,7 +286,7 @@ export default function ServerView() {
                   ? 'bg-accent text-accent-foreground font-bold shadow-sm'
                   : 'text-text-3 hover:text-text'
               }`}
-              title={isOwner ? "Chế độ Sân khấu (Chủ phòng đổi sẽ chuyển cả phòng)" : "Chế độ Sân khấu (Visualizer 2D)"}
+              title="Chế độ Sân khấu (Visualizer 2D)"
             >
               <span>Sân khấu 🎧</span>
               <span className="flex h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
