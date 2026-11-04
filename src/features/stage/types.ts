@@ -134,6 +134,41 @@ export const DEFAULT_SKIN: SkinConfig = {
   acc: 1,
 };
 
+export const STORAGE_SKIN_KEY = 'tnmn_stage_avatar_v1';
+
+export function getDeterministicSkin(uidOrName: string): SkinConfig {
+  let hash = 0;
+  for (let i = 0; i < uidOrName.length; i++) {
+    hash = (hash << 5) - hash + uidOrName.charCodeAt(i);
+    hash |= 0;
+  }
+  const h = Math.abs(hash);
+  const shirtList = [...SHIRTS, 'bayern', 'mu', 'mc', 'zalo_ts'];
+  return {
+    shirt: shirtList[h % shirtList.length],
+    pants: PANTS[(h >> 3) % PANTS.length],
+    skin: SKINS[(h >> 5) % SKINS.length],
+    hairC: HAIRC[(h >> 7) % HAIRC.length],
+    hair: (h >> 9) % 5,
+    glasses: (h >> 11) % 3,
+    acc: (h >> 13) % 3,
+  };
+}
+
+export function sanitizeSkin(raw: any, fallbackUid?: string): SkinConfig {
+  const fallback = fallbackUid ? getDeterministicSkin(fallbackUid) : DEFAULT_SKIN;
+  if (!raw || typeof raw !== 'object') return fallback;
+  return {
+    shirt: typeof raw.shirt === 'string' ? raw.shirt : fallback.shirt,
+    pants: typeof raw.pants === 'string' ? raw.pants : fallback.pants,
+    skin: typeof raw.skin === 'string' ? raw.skin : fallback.skin,
+    hairC: typeof raw.hairC === 'string' ? raw.hairC : fallback.hairC,
+    hair: typeof raw.hair === 'number' && raw.hair >= 0 && raw.hair <= 4 ? raw.hair : fallback.hair,
+    glasses: typeof raw.glasses === 'number' && raw.glasses >= 0 && raw.glasses <= 2 ? raw.glasses : fallback.glasses,
+    acc: typeof raw.acc === 'number' && raw.acc >= 0 && raw.acc <= 2 ? raw.acc : fallback.acc,
+  };
+}
+
 export const EMOS = ['🔥', '🙌', '💃', '😎', '❤️', '🥳'];
 
 export interface StageBgPreset {

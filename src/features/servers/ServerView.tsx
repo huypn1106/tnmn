@@ -16,6 +16,7 @@ import AddTrackModal from '../queue/AddTrackModal';
 import GeneratePlaylistModal from '../llm/GeneratePlaylistModal';
 import QuoteDisplay from '../../shared/QuoteDisplay';
 import StageVisualizer from '../stage/StageVisualizer';
+import type { SkinConfig } from '../stage/types';
 
 export default function ServerView() {
   const { serverId } = useParams<{ serverId: string }>();
@@ -32,7 +33,7 @@ export default function ServerView() {
     return (localStorage.getItem('tnmn_view_mode') as 'classic' | 'stage') || 'classic';
   });
 
-  const [memberProfiles, setMemberProfiles] = useState<Array<{ uid: string; displayName?: string; username?: string; photoURL?: string }>>([]);
+  const [memberProfiles, setMemberProfiles] = useState<Array<{ uid: string; displayName?: string; username?: string; photoURL?: string; stageSkin?: SkinConfig }>>([]);
   const [presence, setPresence] = useState<Record<string, any>>({});
 
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function ServerView() {
             ...data,
             username: uname,
             displayName: uname,
+            stageSkin: data.stageSkin,
           };
         } catch {
           return { uid, username: 'spirit', displayName: 'spirit' };
@@ -83,16 +85,24 @@ export default function ServerView() {
       if (member.uid === user?.uid) return true;
       const status = presence[member.uid];
       return status?.online && currentServerIds.has(status?.activeServerId);
+    }).map((member) => {
+      const status = presence[member.uid];
+      return {
+        ...member,
+        stageSkin: status?.stageSkin || member.stageSkin,
+      };
     });
 
     // Make sure current user is always included if logged in
     if (user && !online.some((m) => m.uid === user.uid)) {
       const myUsername = profile?.username || user.displayName || 'Bạn';
+      const mySkin = presence[user.uid]?.stageSkin || (profile as any)?.stageSkin;
       online.unshift({
         uid: user.uid,
         displayName: myUsername,
         username: myUsername,
         photoURL: profile?.photoURL || user.photoURL || '',
+        stageSkin: mySkin,
       });
     }
 

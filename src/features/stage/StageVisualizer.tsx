@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { addDoc, collection, limit, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../app/firebase';
+import { addDoc, collection, doc, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { ref, update } from 'firebase/database';
+import { db, rtdb } from '../../app/firebase';
 import {
   AUTO_SET,
   DEFAULT_SKIN,
   DROP_SET,
   EMOS,
   MOVE_NAMES,
-  PANTS,
-  SHIRTS,
-  SKINS,
   STAGE_PRESETS,
+  STORAGE_SKIN_KEY,
+  sanitizeSkin,
 } from './types';
 import type {
   DanceMove,
@@ -41,7 +41,7 @@ interface StageVisualizerProps {
   isPlaying?: boolean;
   playbackPosition?: number;
   updatedAt?: number;
-  roomMembers?: Array<{ uid: string; displayName?: string; username?: string; photoURL?: string }>;
+  roomMembers?: Array<{ uid: string; displayName?: string; username?: string; photoURL?: string; stageSkin?: SkinConfig }>;
   currentUserName?: string;
   currentUserId?: string;
   isOwner?: boolean;
@@ -54,7 +54,6 @@ interface StageVisualizerProps {
   onSwitchToClassic?: () => void;
 }
 
-const STORAGE_SKIN_KEY = 'tnmn_stage_avatar_v1';
 const FONT = '"DM Sans", system-ui, -apple-system, sans-serif';
 
 export default function StageVisualizer({
@@ -84,12 +83,76 @@ export default function StageVisualizer({
   const [skin, setSkin] = useState<SkinConfig>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_SKIN_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) return sanitizeSkin(JSON.parse(saved), currentUserId);
     } catch (e) {
       console.warn(e);
     }
     return DEFAULT_SKIN;
   });
+
+  // Sync skin from member profile if available and local storage is empty
+  useEffect(() => {
+    if (!currentUserId || currentUserId === 'me') return;
+    const myMember = roomMembers.find((m) => m.uid === currentUserId);
+    if (myMember?.stageSkin) {
+      const sanitized = sanitizeSkin(myMember.stageSkin, currentUserId);
+      setSkin((prev) => {
+        const saved = localStorage.getItem(STORAGE_SKIN_KEY);
+        if (!saved) {
+          try {
+            localStorage.setItem(STORAGE_SKIN_KEY, JSON.stringify(sanitized));
+          } catch {}
+          return sanitized;
+        }
+        return prev;
+      });
+    }
+  }, [roomMembers, currentUserId]);
+
+  // Broadcast current skin to RTDB presence so other room listeners receive it immediately
+  useEffect(() => {
+    if (!currentUserId || currentUserId === 'me' || !skin) return;
+    try {
+      update(ref(rtdb, `presence/${currentUserId}`), {
+        stageSkin: skin,
+      });
+    } catch (e) {
+      console.warn('Failed to broadcast initial skin to RTDB:', e);
+    }
+  }, [currentUserId, skin]);
+
+  const handleSaveSkin = async (updatedSkin: SkinConfig) => {
+    const sanitized = sanitizeSkin(updatedSkin, currentUserId);
+    setSkin(sanitized);
+    try {
+      localStorage.setItem(STORAGE_SKIN_KEY, JSON.stringify(sanitized));
+    } catch (e) {
+      console.warn(e);
+    }
+    const me = membersRef.current.find((m) => m.isYou);
+    if (me) {
+      Object.assign(me, sanitized);
+      me.emotes.push({ e: '✨', t: 0, dx: 0 });
+    }
+
+    if (currentUserId && currentUserId !== 'me') {
+      try {
+        await updateDoc(doc(db, 'users', currentUserId), {
+          stageSkin: sanitized,
+        });
+      } catch (err) {
+        console.warn('Failed to save skin to Firestore:', err);
+      }
+
+      try {
+        await update(ref(rtdb, `presence/${currentUserId}`), {
+          stageSkin: sanitized,
+        });
+      } catch (err) {
+        console.warn('Failed to broadcast skin to RTDB:', err);
+      }
+    }
+  };
   const [isSkinModalOpen, setIsSkinModalOpen] = useState(false);
   const [isBgModalOpen, setIsBgModalOpen] = useState(false);
   const [isLedModalOpen, setIsLedModalOpen] = useState(false);
@@ -381,9 +444,12 @@ export default function StageVisualizer({
     otherUsers.forEach((u, i) => {
       const prevM = existingMap.get(u.uid);
       const uname = u.username || u.displayName || `user_${i + 1}`;
+      const userSkin = sanitizeSkin(u.stageSkin, u.uid);
+
       if (prevM) {
         updated.push({
           ...prevM,
+          ...userSkin,
           name: uname,
           leaving: false,
         });
@@ -392,13 +458,7 @@ export default function StageVisualizer({
           id: u.uid,
           name: uname,
           isYou: false,
-          shirt: pick([...SHIRTS, 'bayern', 'mu', 'mc', 'zalo_ts']),
-          pants: pick(PANTS),
-          skin: pick(SKINS),
-          hairC: pick(SKINS),
-          hair: Math.floor(Math.random() * 5),
-          glasses: Math.random() < 0.4 ? 1 : 0,
-          acc: Math.random() < 0.3 ? 1 : 0,
+          ...userSkin,
           seed: (i + 1) % 7,
           off: (Math.random() - 0.5) * 0.05,
           x: null,
@@ -1545,19 +1605,7 @@ export default function StageVisualizer({
         isOpen={isSkinModalOpen}
         onClose={() => setIsSkinModalOpen(false)}
         currentSkin={skin}
-        onSave={(updatedSkin) => {
-          setSkin(updatedSkin);
-          try {
-            localStorage.setItem(STORAGE_SKIN_KEY, JSON.stringify(updatedSkin));
-          } catch (e) {
-            console.warn(e);
-          }
-          const me = membersRef.current.find((m) => m.isYou);
-          if (me) {
-            Object.assign(me, updatedSkin);
-            me.emotes.push({ e: '✨', t: 0, dx: 0 });
-          }
-        }}
+        onSave={handleSaveSkin}
       />
 
       {/* Stage Background Customizer Modal (Room owner only) */}
