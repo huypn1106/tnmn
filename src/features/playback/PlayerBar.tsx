@@ -46,6 +46,34 @@ export default function PlayerBar() {
 
   const isTransitioningRef = useRef(false);
 
+  // Smart Shuffle state tracking: cycle without replacement + recent history sliding window
+  const playedInCycleRef = useRef<Set<string>>(new Set());
+  const recentHistoryRef = useRef<string[]>([]);
+  const navHistoryRef = useRef<string[]>([]);
+  const prevPlaylistIdRef = useRef<string | undefined>(playbackState?.playlistId);
+  const prevShuffleRef = useRef<boolean | undefined>(playbackState?.shuffle);
+
+  // Clear shuffle history when playlist changes
+  useEffect(() => {
+    if (prevPlaylistIdRef.current !== playbackState?.playlistId) {
+      prevPlaylistIdRef.current = playbackState?.playlistId;
+      playedInCycleRef.current.clear();
+      recentHistoryRef.current = [];
+      navHistoryRef.current = [];
+    }
+  }, [playbackState?.playlistId]);
+
+  // When shuffle is turned ON, seed cycle with current track
+  useEffect(() => {
+    if (playbackState?.shuffle && !prevShuffleRef.current) {
+      playedInCycleRef.current.clear();
+      if (playbackState.trackId) {
+        playedInCycleRef.current.add(playbackState.trackId);
+      }
+    }
+    prevShuffleRef.current = playbackState?.shuffle;
+  }, [playbackState?.shuffle, playbackState?.trackId]);
+
   useEffect(() => {
     const handleInteraction = () => setHasInteracted(true);
     window.addEventListener('mousedown', handleInteraction);
@@ -78,13 +106,58 @@ export default function PlayerBar() {
     const currentIndex = tracks.findIndex(item => item.id === playbackState.trackId);
 
     if (playbackState.shuffle) {
-      // Simple shuffle: pick a random index that isn't the current one (if possible)
-      if (tracks.length > 1) {
-        do {
-          nextIndex = Math.floor(Math.random() * tracks.length);
-        } while (nextIndex === currentIndex);
+      if (tracks.length <= 1) {
+        nextIndex = tracks.length === 1 && playbackState.loop !== 'off' ? 0 : -1;
       } else {
-        nextIndex = 0;
+        const curId = playbackState.trackId;
+        if (curId) {
+          playedInCycleRef.current.add(curId);
+
+          // Add to navHistory for Previous button
+          const lastNav = navHistoryRef.current[navHistoryRef.current.length - 1];
+          if (lastNav !== curId) {
+            navHistoryRef.current.push(curId);
+            if (navHistoryRef.current.length > 50) {
+              navHistoryRef.current.shift();
+            }
+          }
+
+          // Add to recentHistory window to prevent repetition across cycles
+          const recent = recentHistoryRef.current.filter(id => id !== curId);
+          recent.push(curId);
+          const maxRecent = Math.min(tracks.length - 1, Math.max(1, Math.floor(tracks.length * 0.7)));
+          while (recent.length > maxRecent) {
+            recent.shift();
+          }
+          recentHistoryRef.current = recent;
+        }
+
+        // Candidate tracks: tracks not yet played in this cycle and not the current track
+        let candidates = tracks.filter(t => !playedInCycleRef.current.has(t.id) && t.id !== curId);
+
+        // If all tracks in this cycle have been played:
+        if (candidates.length === 0) {
+          if (playbackState.loop === 'off') {
+            // Reached the end of the shuffled list and loop is off: stop playback
+            nextIndex = -1;
+          } else {
+            // Start a new cycle, but avoid the most recently played tracks
+            playedInCycleRef.current.clear();
+            if (curId) {
+              playedInCycleRef.current.add(curId);
+            }
+            candidates = tracks.filter(t => t.id !== curId && !recentHistoryRef.current.includes(t.id));
+            if (candidates.length === 0) {
+              candidates = tracks.filter(t => t.id !== curId);
+            }
+          }
+        }
+
+        if (nextIndex !== -1 && candidates.length > 0) {
+          const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+          nextIndex = tracks.findIndex(t => t.id === chosen.id);
+          playedInCycleRef.current.add(chosen.id);
+        }
       }
     } else {
       nextIndex = currentIndex + 1;
@@ -116,6 +189,26 @@ export default function PlayerBar() {
 
   const handlePrevTrack = useCallback(() => {
     if (!isDJ || !playbackState || tracks.length === 0) return;
+
+    if (playbackState.shuffle && navHistoryRef.current.length > 0) {
+      const prevTrackId = navHistoryRef.current.pop();
+      const prevTrack = tracks.find(item => item.id === prevTrackId);
+      if (prevTrack) {
+        // Remove from current cycle so it can be re-played going forward
+        playedInCycleRef.current.delete(prevTrack.id);
+        emitPlayback({
+          trackId: prevTrack.id,
+          playlistId: (prevTrack as any).playlistId || playbackState.playlistId,
+          source: prevTrack.source,
+          sourceId: prevTrack.sourceId,
+          thumbnail: prevTrack.thumbnail,
+          title: prevTrack.title,
+          position: 0,
+          playing: true,
+        });
+        return;
+      }
+    }
 
     const currentIndex = tracks.findIndex(item => item.id === playbackState.trackId);
     let prevIndex = currentIndex - 1;
