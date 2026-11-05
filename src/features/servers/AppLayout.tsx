@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import ServerList from './ServerList';
 import PlayerBar from '../playback/PlayerBar';
@@ -7,11 +7,84 @@ import ChatRail from '../chat/ChatRail';
 import MembersList from './MembersList';
 import { playBip } from '../../shared/utils/sound';
 
+const DEFAULT_CHAT_WIDTH = 280;
+const MIN_CHAT_WIDTH = 240;
+const MAX_CHAT_WIDTH = 700;
+
 export default function AppLayout() {
   usePresence();
   const [activeTab, setActiveTab] = useState<'servers' | 'queue' | 'chat'>('queue');
   const [hasUnread, setHasUnread] = useState(false);
   const [viewedPlaylistId, setViewedPlaylistId] = useState<string | null>(null);
+
+  // Resizable Chat Rail state with localStorage persistence
+  const [chatWidth, setChatWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('tnmn_chat_rail_width');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= MIN_CHAT_WIDTH && parsed <= MAX_CHAT_WIDTH) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+    return DEFAULT_CHAT_WIDTH;
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const chatWidthRef = useRef(chatWidth);
+  chatWidthRef.current = chatWidth;
+
+  // Pointer drag listener for smooth resizing across the whole screen
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const newWidth = window.innerWidth - e.clientX;
+      const maxWidth = Math.min(MAX_CHAT_WIDTH, Math.floor(window.innerWidth * 0.6));
+      const clamped = Math.max(MIN_CHAT_WIDTH, Math.min(maxWidth, newWidth));
+      setChatWidth(clamped);
+    };
+
+    const handlePointerUp = () => {
+      setIsDragging(false);
+      try {
+        localStorage.setItem('tnmn_chat_rail_width', chatWidthRef.current.toString());
+      } catch (e) {
+        console.warn(e);
+      }
+    };
+
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+
+    return () => {
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, [isDragging]);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleResetWidth = () => {
+    setChatWidth(DEFAULT_CHAT_WIDTH);
+    try {
+      localStorage.setItem('tnmn_chat_rail_width', DEFAULT_CHAT_WIDTH.toString());
+    } catch (e) {
+      console.warn(e);
+    }
+  };
 
   const handleNewMessage = () => {
     if (activeTab !== 'chat') {
@@ -53,10 +126,30 @@ export default function AppLayout() {
         {/* Right Rail: Chat + Members */}
         <aside 
           onMouseEnter={() => setHasUnread(false)}
+          style={{ '--rail-w': `${chatWidth}px` } as React.CSSProperties}
           className={`
           ${activeTab === 'chat' ? 'flex' : 'hidden'} 
-          absolute inset-0 z-40 flex-col bg-bg md:relative md:border-l md:border-rule md:bg-bg-2 lg:flex lg:w-[var(--rail-w)] lg:shrink-0
+          absolute inset-0 z-40 flex-col bg-bg md:relative md:border-l md:border-rule md:bg-bg-2 lg:flex lg:w-[var(--rail-w)] lg:shrink-0 ${
+            isDragging ? 'select-none transition-none' : ''
+          }
         `}>
+          {/* Resize Handle - visible on desktop (lg:) */}
+          <div
+            onPointerDown={handlePointerDown}
+            onDoubleClick={handleResetWidth}
+            className={`hidden lg:flex absolute top-0 bottom-0 -left-1.5 w-3 cursor-col-resize z-50 items-center justify-center select-none group touch-none ${
+              isDragging ? 'bg-accent/20' : 'hover:bg-accent/10'
+            }`}
+            title="Kéo để chỉnh kích thước khung chat (Nhấp đúp để đặt lại mặc định 280px)"
+          >
+            {/* Visual indicator bar */}
+            <div 
+              className={`w-[2px] h-10 rounded-full transition-all duration-150 ${
+                isDragging ? 'bg-accent h-16' : 'bg-rule group-hover:bg-accent/80'
+              }`}
+            />
+          </div>
+
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-rule lg:hidden">
               <h2 className="font-mono text-xs uppercase tracking-widest text-text-3">Chat & Members</h2>

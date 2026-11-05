@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
-import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../app/firebase';
 import { useAuth } from '../auth/useAuth';
+
+export interface MessageReactionItem {
+  uid: string;
+  username: string;
+}
 
 export interface Message {
   id: string;
@@ -21,6 +26,7 @@ export interface Message {
     text: string;
     username: string;
   } | null;
+  reactions?: Record<string, MessageReactionItem[]>;
 }
 
 export function useChat(serverId: string | undefined) {
@@ -49,7 +55,8 @@ export function useChat(serverId: string | undefined) {
         return {
           id: doc.id,
           ...data,
-          username: data.username || data.displayName || 'Unknown'
+          username: data.username || data.displayName || 'Unknown',
+          reactions: data.reactions || {},
         };
       }) as Message[];
       
@@ -78,9 +85,42 @@ export function useChat(serverId: string | undefined) {
       photoURL: user.photoURL,
       createdAt: serverTimestamp(),
       playbackState: playbackState || null,
-      replyTo: replyTo || null
+      replyTo: replyTo || null,
+      reactions: {}
     });
   };
 
-  return { messages, loading, sendMessage, loadMore, hasMore };
+  const toggleReaction = async (messageId: string, emoji: string) => {
+    if (!user || !serverId) return;
+    const msg = messages.find(m => m.id === messageId);
+    if (!msg) return;
+
+    const myUid = user.uid;
+    const myUsername = profile?.username || user.displayName || 'user';
+
+    const curReactions = msg.reactions || {};
+    const currentList = curReactions[emoji] || [];
+    const hasReacted = currentList.some(r => r.uid === myUid);
+
+    const updatedList = hasReacted
+      ? currentList.filter(r => r.uid !== myUid)
+      : [...currentList, { uid: myUid, username: myUsername }];
+
+    const updatedReactions = { ...curReactions };
+    if (updatedList.length > 0) {
+      updatedReactions[emoji] = updatedList;
+    } else {
+      delete updatedReactions[emoji];
+    }
+
+    try {
+      await updateDoc(doc(db, 'servers', serverId, 'messages', messageId), {
+        reactions: updatedReactions
+      });
+    } catch (err) {
+      console.error('Failed to toggle reaction:', err);
+    }
+  };
+
+  return { messages, loading, sendMessage, toggleReaction, loadMore, hasMore };
 }

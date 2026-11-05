@@ -14,10 +14,12 @@ interface MemberProfile {
   photoURL: string;
 }
 
+const QUICK_REACTIONS = ['❤️', '🔥', '👍', '😂', '😮', '🎉'];
+
 export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }) {
   const { serverId } = useParams<{ serverId: string }>();
   const { user, profile } = useAuth();
-  const { messages, sendMessage, loadMore, hasMore } = useChat(serverId);
+  const { messages, sendMessage, toggleReaction, loadMore, hasMore } = useChat(serverId);
   const [text, setText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -32,6 +34,21 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
 
   const [expandedMsgId, setExpandedMsgId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message['replyTo'] | null>(null);
+  const [activeReactPickerMsgId, setActiveReactPickerMsgId] = useState<string | null>(null);
+  const reactPickerRef = useRef<HTMLDivElement>(null);
+
+  // Close reaction picker on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (reactPickerRef.current && !reactPickerRef.current.contains(e.target as Node)) {
+        setActiveReactPickerMsgId(null);
+      }
+    };
+    if (activeReactPickerMsgId) {
+      window.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, [activeReactPickerMsgId]);
 
   // States for @ mentions auto-complete
   const [membersList, setMembersList] = useState<MemberProfile[]>([]);
@@ -311,7 +328,7 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
       <div 
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 custom-scrollbar"
       >
         {hasMore && (
           <div className="flex justify-center pb-2">
@@ -325,8 +342,8 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
           </div>
         )}
 
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex flex-col ${msg.userId === user?.uid ? 'items-end' : 'items-start'} group relative`}>
+        {messages.map((msg, index) => (
+          <div key={msg.id} className={`flex flex-col ${msg.userId === user?.uid ? 'items-end' : 'items-start'} group/item relative w-full`}>
             {/* Username and Time */}
             <div className="flex items-center gap-2 mb-1">
               {msg.userId !== user?.uid && <span className="font-chat text-[10px] font-bold text-text-2">@{msg.username}</span>}
@@ -336,7 +353,7 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
             </div>
 
             {/* Bubble and Action Button Container */}
-            <div className={`flex flex-col gap-1 max-w-[95%] ${msg.userId === user?.uid ? 'items-end' : 'items-start'}`}>
+            <div className={`relative flex flex-col gap-1 max-w-[88%] ${msg.userId === user?.uid ? 'items-end' : 'items-start'}`}>
               {msg.replyTo && (
                 <div 
                   className={`flex items-center gap-1.5 text-[10px] text-text-3 mb-0.5 opacity-70 hover:opacity-100 transition-opacity cursor-pointer ${
@@ -351,11 +368,13 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                   </svg>
                   <span className="font-bold">@{msg.replyTo.username}</span>
-                  <span className="truncate max-w-[150px]">{msg.replyTo.text}</span>
+                  <span className="truncate max-w-[140px]">{msg.replyTo.text}</span>
                 </div>
               )}
-              <div className={`flex items-center gap-2 ${msg.userId === user?.uid ? 'flex-row-reverse' : 'flex-row'}`}>
-                <div className={`px-3 py-2 text-xs font-chat leading-relaxed transition-all ${
+
+              {/* Message Bubble wrapper with floating action toolbar */}
+              <div className="relative group/bubble inline-block max-w-full">
+                <div className={`px-3 py-2 text-xs font-chat leading-relaxed transition-all break-words [word-break:break-word] ${
                   msg.userId === user?.uid 
                     ? 'bg-accent text-accent-foreground shadow-lg shadow-accent/10' 
                     : isCurrentUserMentioned(msg.text)
@@ -365,16 +384,42 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
                   {renderMessageContent(msg.text)}
                 </div>
 
-                {/* Actions Container */}
-                <div className={`flex items-center gap-1 transition-opacity ${expandedMsgId === msg.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                {/* Floating Actions Toolbar */}
+                <div className={`absolute -top-3.5 ${
+                  msg.userId === user?.uid ? 'right-0' : 'left-0'
+                } z-20 flex items-center bg-bg-2 border border-rule rounded-full px-1 py-0.5 shadow-md gap-0.5 transition-all duration-150 ${
+                  expandedMsgId === msg.id || activeReactPickerMsgId === msg.id
+                    ? 'opacity-100 scale-100 pointer-events-auto'
+                    : 'opacity-0 scale-95 pointer-events-none group-hover/item:opacity-100 group-hover/item:scale-100 group-hover/item:pointer-events-auto'
+                }`}>
+                  {/* React Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveReactPickerMsgId(activeReactPickerMsgId === msg.id ? null : msg.id);
+                    }}
+                    className={`p-1 rounded-full transition-all shrink-0 ${
+                      activeReactPickerMsgId === msg.id 
+                        ? 'bg-accent/20 text-accent' 
+                        : 'text-text-3 hover:text-accent hover:bg-accent/10'
+                    }`}
+                    title="Thả cảm xúc"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+
                   {/* Reply Button */}
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setReplyingTo({ id: msg.id, text: msg.text, username: msg.username });
                       inputRef.current?.focus();
                     }}
-                    className="p-1.5 rounded-full text-text-3 hover:text-accent hover:bg-accent/10 transition-all shrink-0"
+                    className="p-1 rounded-full text-text-3 hover:text-accent hover:bg-accent/10 transition-all shrink-0"
                     title="Reply"
                   >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -384,11 +429,12 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
 
                   {/* Info Button */}
                   <button 
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setExpandedMsgId(expandedMsgId === msg.id ? null : msg.id);
                     }}
-                    className={`p-1.5 rounded-full transition-all shrink-0 ${
+                    className={`p-1 rounded-full transition-all shrink-0 ${
                       expandedMsgId === msg.id 
                         ? 'bg-accent text-accent-foreground' 
                         : 'text-text-3 hover:text-accent hover:bg-accent/10'
@@ -400,7 +446,73 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
                     </svg>
                   </button>
                 </div>
+
+                {/* Quick Emoji Reaction Picker Popup */}
+                {activeReactPickerMsgId === msg.id && (
+                  <div
+                    ref={reactPickerRef}
+                    className={`absolute z-30 ${
+                      msg.userId === user?.uid ? 'right-0' : 'left-0'
+                    } ${
+                      index === 0 ? 'top-full mt-1.5' : 'bottom-full mb-1.5'
+                    } flex items-center gap-1 bg-bg-2 border border-rule px-2 py-1 rounded-full shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150`}
+                  >
+                    {QUICK_REACTIONS.map((emoji) => {
+                      const hasReacted = msg.reactions?.[emoji]?.some((r) => r.uid === user?.uid);
+                      return (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleReaction(msg.id, emoji);
+                            setActiveReactPickerMsgId(null);
+                          }}
+                          className={`text-base p-1 rounded-full hover:scale-125 transition-all leading-none ${
+                            hasReacted ? 'bg-accent/25 scale-110' : 'hover:bg-bg-3'
+                          }`}
+                          title={emoji}
+                        >
+                          {emoji}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+
+              {/* Reaction Badges */}
+              {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                <div className={`flex flex-wrap items-center gap-1 mt-0.5 ${msg.userId === user?.uid ? 'justify-end' : 'justify-start'}`}>
+                  {Object.entries(msg.reactions).map(([emoji, reactors]) => {
+                    if (!reactors || reactors.length === 0) return null;
+                    const hasReacted = reactors.some((r) => r.uid === user?.uid);
+                    const tooltipText = reactors
+                      .map((r) => (r.uid === user?.uid ? 'Bạn' : `@${r.username}`))
+                      .join(', ');
+
+                    return (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleReaction(msg.id, emoji);
+                        }}
+                        title={tooltipText}
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono border transition-all active:scale-95 select-none ${
+                          hasReacted
+                            ? 'bg-accent/20 border-accent/50 text-accent font-medium shadow-xs shadow-accent/10'
+                            : 'bg-bg-3/80 hover:bg-bg-3 border-rule/50 text-text-3 hover:text-text-2'
+                        }`}
+                      >
+                        <span className="text-xs leading-none">{emoji}</span>
+                        <span className="font-bold text-[9px] leading-none">{reactors.length}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             
             {expandedMsgId === msg.id && (
