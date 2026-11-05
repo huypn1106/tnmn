@@ -36,6 +36,7 @@ import StageLedModal from './StageLedModal';
 
 interface StageVisualizerProps {
   serverId?: string;
+  serverSlug?: string;
   serverName?: string;
   trackTitle?: string;
   isPlaying?: boolean;
@@ -58,6 +59,7 @@ const FONT = '"DM Sans", system-ui, -apple-system, sans-serif';
 
 export default function StageVisualizer({
   serverId,
+  serverSlug,
   serverName = 'Sân khấu TNMN',
   trackTitle,
   isPlaying = false,
@@ -232,18 +234,27 @@ export default function StageVisualizer({
 
   // Listen to live chat messages for this room
   useEffect(() => {
-    if (!serverId) return;
+    const targetIds = Array.from(new Set([serverId, serverSlug].filter(Boolean))) as string[];
+    if (targetIds.length === 0) return;
 
-    const q = query(
-      collection(db, 'servers', serverId, 'messages'),
-      orderBy('createdAt', 'desc'),
-      limit(20)
-    );
+    const unsubs = targetIds.map((sid) => {
+      const q = query(
+        collection(db, 'servers', sid, 'messages'),
+        orderBy('createdAt', 'desc'),
+        limit(20)
+      );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const now = performance.now();
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
+      return onSnapshot(q, (snapshot) => {
+        const now = performance.now();
+        const changes = snapshot.docChanges().filter((c) => c.type === 'added');
+        // Sort ascending by time so newer messages always take precedence
+        changes.sort((a, b) => {
+          const ta = a.doc.data().createdAt?.toMillis ? a.doc.data().createdAt.toMillis() : 0;
+          const tb = b.doc.data().createdAt?.toMillis ? b.doc.data().createdAt.toMillis() : 0;
+          return ta - tb;
+        });
+
+        changes.forEach((change) => {
           const data = change.doc.data();
           const senderId = data.userId;
           const text = data.text;
@@ -251,9 +262,11 @@ export default function StageVisualizer({
 
           // Check timestamp: accept recent messages within the last 30 seconds
           let isRecent = false;
+          let ageMs = 0;
           if (data.createdAt?.toMillis) {
-            const ageMs = Date.now() - data.createdAt.toMillis();
-            if (ageMs < 30000 && ageMs >= -2000) {
+            ageMs = Date.now() - data.createdAt.toMillis();
+            // Accept messages within last 30s, allowing for clock skew up to 2 minutes in the future
+            if (ageMs < 30000 && ageMs > -120000) {
               isRecent = true;
             }
           } else {
@@ -262,18 +275,24 @@ export default function StageVisualizer({
           }
 
           if (isRecent) {
-            const entry = { text: String(text).trim(), receivedAt: now };
-            chatBubblesRef.current.set(senderId, entry);
+            const safeAgeMs = Math.max(0, ageMs);
+            const entry = { text: String(text).trim(), receivedAt: now - safeAgeMs };
+            chatBubblesRef.current.set(String(senderId), entry);
+            if (data.username) {
+              chatBubblesRef.current.set(String(data.username).toLowerCase(), entry);
+            }
             if (senderId === currentUserId) {
               chatBubblesRef.current.set('me', entry);
             }
           }
-        }
+        });
       });
     });
 
-    return () => unsubscribe();
-  }, [serverId, currentUserId]);
+    return () => {
+      unsubs.forEach((unsub) => unsub());
+    };
+  }, [serverId, serverSlug, currentUserId]);
 
   const handleSendStageChat = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -285,8 +304,11 @@ export default function StageVisualizer({
       const myId = currentUserId || 'me';
       const now = performance.now();
       const entry = { text: trimmed, receivedAt: now };
-      chatBubblesRef.current.set(myId, entry);
+      chatBubblesRef.current.set(String(myId), entry);
       chatBubblesRef.current.set('me', entry);
+      if (currentUserName) {
+        chatBubblesRef.current.set(currentUserName.toLowerCase(), entry);
+      }
 
       await addDoc(collection(db, 'servers', serverId, 'messages'), {
         text: trimmed,
@@ -1086,7 +1108,10 @@ export default function StageVisualizer({
         }
 
         // Chat Bubble (Shown above head for 30s after user chats)
-        const bubble = chatBubblesRef.current.get(String(m.id)) || (m.isYou ? chatBubblesRef.current.get('me') : undefined);
+        const bubble =
+          chatBubblesRef.current.get(String(m.id)) ||
+          (m.name ? chatBubblesRef.current.get(m.name.toLowerCase()) : undefined) ||
+          (m.isYou ? chatBubblesRef.current.get('me') : undefined);
         if (bubble) {
           const nowMs = performance.now();
           const ageSec = (nowMs - bubble.receivedAt) / 1000;
@@ -1140,7 +1165,7 @@ export default function StageVisualizer({
               const bubbleAnchorX = safeTagX;
               const bubbleAnchorY = hp.hy - th - 5;
               const bubbleX = clamp(bubbleAnchorX, bw / 2 + 8, w - bw / 2 - 8);
-              const bubbleY = bubbleAnchorY - bh - tailH;
+              const bubbleY = Math.max(6, bubbleAnchorY - bh - tailH);
 
               // Pop-in scale centered on anchor
               ctx.translate(bubbleAnchorX, bubbleAnchorY);
@@ -1190,6 +1215,7 @@ export default function StageVisualizer({
             }
           } else {
             chatBubblesRef.current.delete(String(m.id));
+            if (m.name) chatBubblesRef.current.delete(m.name.toLowerCase());
             if (m.isYou) chatBubblesRef.current.delete('me');
           }
         }

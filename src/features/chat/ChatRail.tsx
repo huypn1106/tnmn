@@ -17,7 +17,9 @@ interface MemberProfile {
 export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }) {
   const { serverId } = useParams<{ serverId: string }>();
   const { user, profile } = useAuth();
-  const { messages, sendMessage, loadMore, hasMore } = useChat(serverId);
+  const { server, resolvedId } = useServer(serverId);
+  const targetServerId = resolvedId || serverId;
+  const { messages, sendMessage, loadMore, hasMore } = useChat(targetServerId);
   const [text, setText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -26,7 +28,6 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
   const [loadingMore, setLoadingMore] = useState(false);
   const prevMessagesRef = useRef<Message[]>([]);
   
-  const { server, resolvedId } = useServer(serverId);
   // We just need the state, so we pass null for player and false for isDJ/hasInteracted
   const { playbackState } = usePlaybackSync(resolvedId || undefined, false, null, false);
 

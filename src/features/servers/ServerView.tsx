@@ -372,6 +372,7 @@ export default function ServerView() {
         {viewMode === 'stage' ? (
           <StageVisualizer
             serverId={resolvedId || serverId}
+            serverSlug={server?.slug}
             serverName={server?.name}
             trackTitle={playbackState?.title}
             isPlaying={playbackState?.playing}
