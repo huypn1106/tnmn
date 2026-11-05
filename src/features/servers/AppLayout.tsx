@@ -3,6 +3,7 @@ import { Outlet, useParams } from 'react-router-dom';
 import ServerList from './ServerList';
 import PlayerBar from '../playback/PlayerBar';
 import { usePresence } from '../../shared/hooks/usePresence';
+import { useFaviconBadge } from '../../shared/hooks/useFaviconBadge';
 import { useServer } from './useServer';
 import ChatRail from '../chat/ChatRail';
 import MembersList from './MembersList';
@@ -17,7 +18,8 @@ export default function AppLayout() {
   const { resolvedId } = useServer(serverId);
   usePresence(resolvedId || serverId);
   const [activeTab, setActiveTab] = useState<'servers' | 'queue' | 'chat'>('queue');
-  const [hasUnread, setHasUnread] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  useFaviconBadge(unreadCount);
   const [viewedPlaylistId, setViewedPlaylistId] = useState<string | null>(null);
 
   // Resizable Chat Rail state with localStorage persistence
@@ -91,7 +93,7 @@ export default function AppLayout() {
 
   const handleNewMessage = () => {
     if (activeTab !== 'chat') {
-      setHasUnread(true);
+      setUnreadCount((prev) => prev + 1);
     }
     
     // Play sound if not on chat tab OR if window is in background, and notifications are not muted
@@ -122,13 +124,14 @@ export default function AppLayout() {
           relative flex flex-1 flex-col overflow-hidden
         `}>
           <div className="flex-1 overflow-y-auto">
-            <Outlet context={{ hasUnread, viewedPlaylistId, setViewedPlaylistId }} />
+            <Outlet context={{ hasUnread: unreadCount > 0, unreadCount, viewedPlaylistId, setViewedPlaylistId }} />
           </div>
         </main>
 
         {/* Right Rail: Chat + Members */}
         <aside 
-          onMouseEnter={() => setHasUnread(false)}
+          onMouseEnter={() => setUnreadCount(0)}
+          onClick={() => setUnreadCount(0)}
           style={{ '--rail-w': `${chatWidth}px` } as React.CSSProperties}
           className={`
           ${activeTab === 'chat' ? 'flex' : 'hidden'} 
@@ -194,14 +197,13 @@ export default function AppLayout() {
         <button 
           onClick={() => {
             setActiveTab('chat');
-            setHasUnread(false);
+            setUnreadCount(0);
           }}
           className={`relative flex flex-1 flex-col items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-widest transition-colors ${activeTab === 'chat' ? 'text-accent' : 'text-text-3'}`}
         >
-          {hasUnread && (
-            <span className="absolute top-3 right-1/2 translate-x-4 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+          {unreadCount > 0 && (
+            <span className="absolute top-1.5 right-1/2 translate-x-3.5 min-w-[18px] h-[18px] px-1 bg-red-600 text-white text-[10px] font-bold font-mono rounded-full flex items-center justify-center shadow-md ring-2 ring-bg-2 animate-in zoom-in-75 duration-150 leading-none z-10">
+              {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

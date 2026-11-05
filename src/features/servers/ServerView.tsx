@@ -21,8 +21,7 @@ import type { SkinConfig } from '../stage/types';
 export default function ServerView() {
   const { serverId } = useParams<{ serverId: string }>();
   const navigate = useNavigate();
-  const { hasUnread, viewedPlaylistId } = useOutletContext<{ 
-    hasUnread: boolean;
+  const { viewedPlaylistId } = useOutletContext<{ 
     viewedPlaylistId: string | null;
     setViewedPlaylistId: (id: string) => void;
   }>();
@@ -245,12 +244,11 @@ export default function ServerView() {
       const songPrefix = playbackState?.playing && playbackState?.title 
         ? `${playbackState.title} • ` 
         : '';
-      const unreadPrefix = hasUnread ? '(•) ' : '';
-      document.title = `${unreadPrefix}${songPrefix}${server.name}`;
+      document.title = `${songPrefix}${server.name}`;
     } else {
-      document.title = hasUnread ? '(•) Listen Together' : 'Listen Together';
+      document.title = 'Listen Together';
     }
-  }, [server?.name, playbackState?.title, playbackState?.playing, hasUnread]);
+  }, [server?.name, playbackState?.title, playbackState?.playing]);
 
   const loading = serverLoading || playlistsLoading;
 
