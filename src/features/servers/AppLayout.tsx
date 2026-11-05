@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useParams } from 'react-router-dom';
 import ServerList from './ServerList';
 import PlayerBar from '../playback/PlayerBar';
 import { usePresence } from '../../shared/hooks/usePresence';
+import { useServer } from './useServer';
 import ChatRail from '../chat/ChatRail';
 import MembersList from './MembersList';
 import { playBip } from '../../shared/utils/sound';
@@ -12,7 +13,9 @@ const MIN_CHAT_WIDTH = 240;
 const MAX_CHAT_WIDTH = 700;
 
 export default function AppLayout() {
-  usePresence();
+  const { serverId } = useParams<{ serverId: string }>();
+  const { resolvedId } = useServer(serverId);
+  usePresence(resolvedId || serverId);
   const [activeTab, setActiveTab] = useState<'servers' | 'queue' | 'chat'>('queue');
   const [hasUnread, setHasUnread] = useState(false);
   const [viewedPlaylistId, setViewedPlaylistId] = useState<string | null>(null);

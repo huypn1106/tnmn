@@ -21,15 +21,17 @@ export interface PlaybackState {
   crossPlaylist?: boolean;
 }
 
-export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, player: PlayerHandle | null, hasInteracted: boolean) {
+export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, player: PlayerHandle | null, _hasInteracted?: boolean) {
   const { user } = useAuth();
   const [playbackState, setPlaybackState] = useState<PlaybackState | null>(null);
   const lastUpdateRef = useRef(0);
+  const latestStateRef = useRef<PlaybackState | null>(null);
 
   // Sync Logic
   useEffect(() => {
     if (!serverId) {
       setPlaybackState(null);
+      latestStateRef.current = null;
       return;
     }
 
@@ -38,12 +40,14 @@ export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, pla
       const data = snapshot.val() as PlaybackState;
       if (!data) {
         setPlaybackState(null);
+        latestStateRef.current = null;
         return;
       }
 
       setPlaybackState(data);
+      latestStateRef.current = data;
 
-      // Sync logic for both DJ and listeners
+      // Sync logic on snapshot received
       if (player) {
         const now = Date.now();
         const targetPos = data.playing 
@@ -51,11 +55,14 @@ export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, pla
           : data.position;
 
         const currentPos = player.getCurrentTime();
+        const duration = player.getDuration();
+
+        // Do not seek past duration if duration is available
+        if (duration > 0 && targetPos >= duration) return;
         
-        // Sync if drift > 2s or if track/pause state differs significantly
-        // For DJ, we use a slightly larger threshold to avoid fight-back during seeks
+        // Sync if drift > 2s (3s for DJ to avoid fight-back during seeks)
         const threshold = isDJ ? 3 : 2;
-        if (Math.abs(targetPos - currentPos) > threshold) {
+        if (Math.abs(targetPos - currentPos) > threshold && targetPos >= 0) {
           player.seekTo(targetPos);
         }
 
@@ -67,8 +74,47 @@ export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, pla
       }
     });
 
-    return () => unsubscribe();
-  }, [serverId, isDJ, player, hasInteracted]);
+    // Active Drift Correction Loop: Every 1 second, ensure ongoing stream sync
+    // This catches initial mount when player was unready during onValue, tab switches, and drift
+    const syncInterval = setInterval(() => {
+      if (!player) return;
+      const curState = latestStateRef.current;
+      if (!curState) return;
+
+      // If DJ just manually sought or updated, don't fight during the buffer window
+      if (isDJ && Date.now() - lastUpdateRef.current < 2500) {
+        return;
+      }
+
+      const now = Date.now();
+      const targetPos = curState.playing
+        ? curState.position + (now - curState.updatedAt) / 1000
+        : curState.position;
+
+      const currentPos = player.getCurrentTime();
+      const duration = player.getDuration();
+
+      if (duration > 0 && targetPos >= duration) return;
+
+      const threshold = isDJ ? 3 : 2;
+      const drift = Math.abs(targetPos - currentPos);
+
+      if (drift > threshold && targetPos >= 0) {
+        player.seekTo(targetPos);
+      }
+
+      if (curState.playing) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    }, 1000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(syncInterval);
+    };
+  }, [serverId, isDJ, player]);
 
   // DJ control function
   const emitPlayback = (patch: Partial<PlaybackState>) => {
@@ -78,8 +124,18 @@ export function usePlaybackSync(serverId: string | undefined, isDJ: boolean, pla
     if (now - lastUpdateRef.current < 200) return;
     lastUpdateRef.current = now;
 
-    // Use current position if not provided, fallback to current state or 0
-    const currentPos = patch.position ?? player?.getCurrentTime() ?? playbackState?.position ?? 0;
+    // Use explicit position if provided (e.g. seek or new track).
+    // Otherwise, compute the current stream position from latest state to prevent resetting to 0!
+    let currentPos: number;
+    if (patch.position !== undefined) {
+      currentPos = patch.position;
+    } else if (latestStateRef.current) {
+      currentPos = latestStateRef.current.playing
+        ? latestStateRef.current.position + (now - latestStateRef.current.updatedAt) / 1000
+        : latestStateRef.current.position;
+    } else {
+      currentPos = player?.getCurrentTime() ?? 0;
+    }
 
     update(ref(rtdb, `playback/${serverId}`), {
       ...patch,

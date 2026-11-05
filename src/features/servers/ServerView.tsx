@@ -1,6 +1,6 @@
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { ref, onValue } from 'firebase/database';
 import { db, rtdb } from '../../app/firebase';
 import { usePlaybackSync } from '../playback/usePlaybackSync';
@@ -35,6 +35,21 @@ export default function ServerView() {
 
   const [memberProfiles, setMemberProfiles] = useState<Array<{ uid: string; displayName?: string; username?: string; photoURL?: string; stageSkin?: SkinConfig }>>([]);
   const [presence, setPresence] = useState<Record<string, any>>({});
+
+  // Auto-join to server members if logged in user is viewing this server
+  useEffect(() => {
+    if (!user || !server || !resolvedId) return;
+    if (server.members && !server.members.includes(user.uid)) {
+      updateDoc(doc(db, 'servers', resolvedId), {
+        members: arrayUnion(user.uid),
+        [`roles.${user.uid}`]: server.roles?.[user.uid] || 'guest',
+      }).catch((err) => {
+        console.warn('Auto-join server member failed in ServerView:', err);
+      });
+    }
+  }, [user?.uid, server?.members, resolvedId]);
+
+  const membersKey = (server?.members || []).join(',');
 
   useEffect(() => {
     if (!server?.members || server.members.length === 0) {
@@ -75,7 +90,7 @@ export default function ServerView() {
       isCancelled = true;
       unsubscribes.forEach((unsub) => unsub());
     };
-  }, [server?.members]);
+  }, [membersKey]);
 
   // Only real listeners currently in this room
   const activeListeners = useMemo(() => {

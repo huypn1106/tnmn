@@ -27,6 +27,8 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
+  const pendingSeekRef = useRef<number | null>(null);
+  const pendingPlayRef = useRef<boolean>(false);
 
   const onReadyRef = useRef(onReady);
   const onEndRef = useRef(onEnd);
@@ -37,10 +39,14 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
   }, [onReady, onEnd]);
 
   const initialVideoId = useRef(videoId);
+  const prevVideoIdRef = useRef(videoId);
 
   useEffect(() => {
     if (isReady && playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
-      playerRef.current.loadVideoById(videoId);
+      if (videoId !== prevVideoIdRef.current) {
+        prevVideoIdRef.current = videoId;
+        playerRef.current.loadVideoById(videoId);
+      }
     }
   }, [videoId, isReady]);
 
@@ -68,6 +74,17 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
         events: {
           onReady: () => {
             setIsReady(true);
+            // Execute any queued seek or play commands that arrived before player was ready
+            if (pendingSeekRef.current !== null && playerRef.current && typeof playerRef.current.seekTo === 'function') {
+              playerRef.current.seekTo(pendingSeekRef.current, true);
+              pendingSeekRef.current = null;
+            }
+            if (pendingPlayRef.current && playerRef.current && typeof playerRef.current.playVideo === 'function') {
+              try {
+                playerRef.current.playVideo();
+              } catch {}
+              pendingPlayRef.current = false;
+            }
             onReadyRef.current?.();
           },
           onStateChange: (event: any) => {
@@ -94,18 +111,25 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
 
   useImperativeHandle(ref, () => ({
     play: () => {
-      if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
-        playerRef.current.playVideo();
+      if (isReady && playerRef.current && typeof playerRef.current.playVideo === 'function') {
+        try {
+          playerRef.current.playVideo();
+        } catch {}
+      } else {
+        pendingPlayRef.current = true;
       }
     },
     pause: () => {
-      if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+      pendingPlayRef.current = false;
+      if (isReady && playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
         playerRef.current.pauseVideo();
       }
     },
     seekTo: (seconds: number) => {
-      if (playerRef.current && typeof playerRef.current.seekTo === 'function') {
+      if (isReady && playerRef.current && typeof playerRef.current.seekTo === 'function') {
         playerRef.current.seekTo(seconds, true);
+      } else {
+        pendingSeekRef.current = seconds;
       }
     },
     getCurrentTime: () => {

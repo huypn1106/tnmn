@@ -19,6 +19,8 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
   const [isReady, setIsReady] = useState(false);
   const currentTimeRef = useRef(0);
   const durationRef = useRef(0);
+  const pendingSeekRef = useRef<number | null>(null);
+  const pendingPlayRef = useRef<boolean>(false);
 
   const onReadyRef = useRef(onReady);
   const onEndRef = useRef(onEnd);
@@ -29,17 +31,21 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
   }, [onReady, onEnd]);
 
   const initialUrl = useRef(url);
+  const prevUrlRef = useRef(url);
 
   useEffect(() => {
     if (isReady && widgetRef.current) {
-      widgetRef.current.load(url, {
-        auto_play: false,
-        hide_related: true,
-        show_comments: false,
-        show_user: false,
-        show_reposts: false,
-        show_teaser: false
-      });
+      if (url !== prevUrlRef.current) {
+        prevUrlRef.current = url;
+        widgetRef.current.load(url, {
+          auto_play: false,
+          hide_related: true,
+          show_comments: false,
+          show_user: false,
+          show_reposts: false,
+          show_teaser: false
+        });
+      }
     }
   }, [url, isReady]);
 
@@ -61,6 +67,16 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
         widgetRef.current.getDuration((dur: number) => {
           durationRef.current = dur / 1000;
         });
+        if (pendingSeekRef.current !== null) {
+          widgetRef.current.seekTo(pendingSeekRef.current * 1000);
+          pendingSeekRef.current = null;
+        }
+        if (pendingPlayRef.current) {
+          try {
+            widgetRef.current.play();
+          } catch {}
+          pendingPlayRef.current = false;
+        }
         onReadyRef.current?.();
       });
       widgetRef.current.bind(window.SC.Widget.Events.PLAY_PROGRESS, (data: any) => {
@@ -88,9 +104,28 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
   }, []);
 
   useImperativeHandle(ref, () => ({
-    play: () => widgetRef.current?.play(),
-    pause: () => widgetRef.current?.pause(),
-    seekTo: (seconds: number) => widgetRef.current?.seekTo(seconds * 1000),
+    play: () => {
+      if (isReady && widgetRef.current) {
+        try {
+          widgetRef.current.play();
+        } catch {}
+      } else {
+        pendingPlayRef.current = true;
+      }
+    },
+    pause: () => {
+      pendingPlayRef.current = false;
+      if (isReady && widgetRef.current) {
+        widgetRef.current.pause();
+      }
+    },
+    seekTo: (seconds: number) => {
+      if (isReady && widgetRef.current) {
+        widgetRef.current.seekTo(seconds * 1000);
+      } else {
+        pendingSeekRef.current = seconds;
+      }
+    },
     getCurrentTime: () => currentTimeRef.current,
     getDuration: () => durationRef.current,
     setMuted: (muted: boolean) => {

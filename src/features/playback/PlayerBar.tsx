@@ -28,12 +28,8 @@ export default function PlayerBar() {
     return saved !== null ? parseInt(saved, 10) : 100;
   });
   
-  const [hasInteracted, setHasInteracted] = useState(() => {
-    // Check if user has already interacted with the document
-    return (navigator as any).userActivation?.hasBeenActive || false;
-  });
   const isDJ = !!user && !!server && server.roles?.[user.uid] === 'dj';
-  const { playbackState, emitPlayback } = usePlaybackSync(resolvedId || undefined, isDJ, player, hasInteracted);
+  const { playbackState, emitPlayback } = usePlaybackSync(resolvedId || undefined, isDJ, player);
 
   const { tracks: playlistTracks } = useTracks(resolvedId || undefined, playbackState?.playlistId);
   const { tracks: allServerTracks } = useAllTracks(resolvedId || undefined);
@@ -75,14 +71,18 @@ export default function PlayerBar() {
   }, [playbackState?.shuffle, playbackState?.trackId]);
 
   useEffect(() => {
-    const handleInteraction = () => setHasInteracted(true);
-    window.addEventListener('mousedown', handleInteraction);
+    const handleInteraction = () => {
+      if (player && playbackState?.playing) {
+        player.play();
+      }
+    };
+    window.addEventListener('pointerdown', handleInteraction);
     window.addEventListener('keydown', handleInteraction);
     return () => {
-      window.removeEventListener('mousedown', handleInteraction);
+      window.removeEventListener('pointerdown', handleInteraction);
       window.removeEventListener('keydown', handleInteraction);
     };
-  }, []);
+  }, [player, playbackState?.playing]);
 
   // Dynamic Accent
   useColorThief((playbackState as any)?.thumbnail);
@@ -90,6 +90,15 @@ export default function PlayerBar() {
   const handleTrackEnd = useCallback(() => {
     if (!isDJ || !playbackState || tracks.length === 0) return;
     if (isTransitioningRef.current) return;
+
+    // Guard against spurious ENDED events from player right after mount or when currentTime is far from duration
+    if (player) {
+      const duration = player.getDuration();
+      const current = player.getCurrentTime();
+      if (duration > 5 && current < duration - 5) {
+        return;
+      }
+    }
 
     isTransitioningRef.current = true;
     setTimeout(() => {
@@ -290,17 +299,34 @@ export default function PlayerBar() {
 
   const handlePlay = useCallback(() => {
     if (!playbackState) return;
+    let resumePos = playbackState.position;
+    if (player) {
+      const cur = player.getCurrentTime();
+      if (cur > 0.5) {
+        resumePos = cur;
+      }
+    }
     emitPlayback({ 
       playing: true,
-      position: player?.getCurrentTime() || 0 
+      position: resumePos 
     });
   }, [playbackState, emitPlayback, player]);
 
   const handlePause = useCallback(() => {
     if (!playbackState) return;
+    const now = Date.now();
+    let pausePos = playbackState.playing
+      ? playbackState.position + (now - playbackState.updatedAt) / 1000
+      : playbackState.position;
+    if (player) {
+      const cur = player.getCurrentTime();
+      if (cur > 0.5) {
+        pausePos = cur;
+      }
+    }
     emitPlayback({ 
       playing: false,
-      position: player?.getCurrentTime() || 0 
+      position: pausePos 
     });
   }, [playbackState, emitPlayback, player]);
 
@@ -355,19 +381,6 @@ export default function PlayerBar() {
 
   return (
     <div className="relative flex min-h-full md:h-full flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4 px-4 py-3 md:py-0">
-      {/* Autoplay Overlay */}
-      {playbackState.playing && !hasInteracted && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg-2/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <button 
-            onClick={() => setHasInteracted(true)}
-            className="flex items-center gap-3 bg-accent px-6 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-foreground shadow-2xl hover:scale-105 transition-transform active:scale-95"
-          >
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            Join Broadcast
-          </button>
-        </div>
-      )}
-
       {/* Hidden Players */}
       {playbackState.source === 'youtube' && (
         <YouTubePlayer 

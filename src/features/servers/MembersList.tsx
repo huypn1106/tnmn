@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { ref, onValue } from 'firebase/database';
 import { db, rtdb } from '../../app/firebase';
 import { useServer } from './useServer';
+import { useAuth } from '../auth/useAuth';
 
 interface Member {
   uid: string;
@@ -14,33 +15,67 @@ interface Member {
 
 export default function MembersList() {
   const { serverId } = useParams<{ serverId: string }>();
-  const { server, loading: serverLoading } = useServer(serverId);
+  const { server, resolvedId, loading: serverLoading } = useServer(serverId);
+  const { user, profile } = useAuth();
   const [members, setMembers] = useState<(Member & { role: string })[]>([]);
   const [presence, setPresence] = useState<Record<string, any>>({});
 
+  // Auto-join to server members if signed-in user enters room
   useEffect(() => {
-    if (!server) {
+    if (!user || !server || !resolvedId) return;
+    if (server.members && !server.members.includes(user.uid)) {
+      updateDoc(doc(db, 'servers', resolvedId), {
+        members: arrayUnion(user.uid),
+        [`roles.${user.uid}`]: server.roles?.[user.uid] || 'guest',
+      }).catch((err) => {
+        console.warn('Auto-join server member failed in MembersList:', err);
+      });
+    }
+  }, [user?.uid, server?.members, resolvedId]);
+
+  const membersKey = (server?.members || []).join(',');
+
+  useEffect(() => {
+    if (!server?.members || server.members.length === 0) {
       setMembers([]);
       return;
     }
 
+    let isCancelled = false;
     const fetchMembers = async () => {
       const currentRoles = server.roles || {};
       const profiles = await Promise.all(
         server.members.map(async (uid) => {
-          const userSnap = await getDoc(doc(db, 'users', uid));
-          const profile = userSnap.exists() ? userSnap.data() : { displayName: 'Unknown', username: 'unknown', photoURL: '' };
-          return { uid, ...profile, role: currentRoles[uid] || 'guest' } as any;
+          try {
+            const userSnap = await getDoc(doc(db, 'users', uid));
+            const data = userSnap.exists() ? userSnap.data() : {};
+            const uname = data.username || data.displayName || 'unknown';
+            return {
+              uid,
+              displayName: uname,
+              username: uname,
+              photoURL: data.photoURL || '',
+              role: currentRoles[uid] || 'guest',
+            };
+          } catch {
+            return { uid, displayName: 'Unknown', username: 'unknown', photoURL: '', role: currentRoles[uid] || 'guest' };
+          }
         })
       );
-      setMembers(profiles);
+      if (!isCancelled) {
+        setMembers(profiles);
+      }
     };
 
     fetchMembers();
-  }, [server]);
+    return () => { isCancelled = true; };
+  }, [membersKey]);
 
   useEffect(() => {
-    if (!server?.members) return;
+    if (!server?.members || server.members.length === 0) {
+      setPresence({});
+      return;
+    }
 
     const unsubscribes = server.members.map((uid) => {
       const pRef = ref(rtdb, `presence/${uid}`);
@@ -50,14 +85,30 @@ export default function MembersList() {
     });
 
     return () => unsubscribes.forEach((unsub) => unsub());
-  }, [server?.members]);
+  }, [membersKey]);
 
   if (!serverId || serverLoading) return null;
 
+  const currentServerIds = new Set([serverId, resolvedId, server?.id, server?.slug].filter(Boolean));
+
   const activeMembers = members.filter((member) => {
+    if (user && member.uid === user.uid) return true; // Current user in this room is ALWAYS online
     const status = presence[member.uid];
-    return status?.online && status?.activeServerId === serverId;
+    return status?.online && currentServerIds.has(status?.activeServerId);
   });
+
+  // Ensure current user is present even if members list is loading or updating
+  if (user && !activeMembers.some((m) => m.uid === user.uid)) {
+    const currentRoles = server?.roles || {};
+    const myName = profile?.displayName || profile?.username || user.displayName || 'Bạn';
+    activeMembers.unshift({
+      uid: user.uid,
+      displayName: myName,
+      username: (profile as any)?.username || myName,
+      photoURL: profile?.photoURL || user.photoURL || '',
+      role: currentRoles[user.uid] || (server?.ownerId === user.uid ? 'dj' : 'guest'),
+    });
+  }
 
   return (
     <div className="flex flex-col border-t border-rule bg-bg-2/50 backdrop-blur-sm p-6 space-y-5">
