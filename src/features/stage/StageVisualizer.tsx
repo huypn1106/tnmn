@@ -55,7 +55,7 @@ interface StageVisualizerProps {
   onSwitchToClassic?: () => void;
 }
 
-const FONT = '"DM Sans", system-ui, -apple-system, sans-serif';
+const FONT = '"Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
 export default function StageVisualizer({
   serverId,
@@ -1311,9 +1311,6 @@ export default function StageVisualizer({
               Sân khấu của phòng 🎧
             </h1>
           </div>
-          <p className="hidden sm:block text-xs text-white/50 mt-0.5 truncate">
-            Mỗi người trong phòng là một nhân vật trên sân khấu, tự nhảy khớp theo nhịp bài đang phát.
-          </p>
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">

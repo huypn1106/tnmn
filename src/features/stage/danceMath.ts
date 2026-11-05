@@ -494,7 +494,7 @@ export function drawTorso(
 
     // AIG Letters
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${Math.max(7, Math.round(4.6 * u))}px "DM Sans", system-ui, sans-serif`;
+    ctx.font = `bold ${Math.max(7, Math.round(4.6 * u))}px "Plus Jakarta Sans", "Inter", system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('AIG', 0, -15.6 * u);
@@ -549,13 +549,13 @@ export function drawTorso(
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#00285e';
     ctx.lineWidth = 0.5 * u;
-    ctx.font = `bold ${Math.max(6, Math.round(2.9 * u))}px "DM Sans", system-ui, sans-serif`;
+    ctx.font = `bold ${Math.max(6, Math.round(2.9 * u))}px "Plus Jakarta Sans", "Inter", system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.strokeText('ETIHAD', 0, -17.2 * u);
     ctx.fillText('ETIHAD', 0, -17.2 * u);
 
-    ctx.font = `bold ${Math.max(4, Math.round(1.6 * u))}px "DM Sans", system-ui, sans-serif`;
+    ctx.font = `bold ${Math.max(4, Math.round(1.6 * u))}px "Plus Jakarta Sans", "Inter", system-ui, sans-serif`;
     ctx.strokeText('AIRWAYS', 0, -14 * u);
     ctx.fillText('AIRWAYS', 0, -14 * u);
 
@@ -596,25 +596,25 @@ export function drawTorso(
 
     // Inner white 'Z' icon
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${Math.max(5, Math.round(2.3 * u))}px "DM Sans", system-ui, sans-serif`;
+    ctx.font = `bold ${Math.max(5, Math.round(2.3 * u))}px "Plus Jakarta Sans", "Inter", system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('Z', lx, -25.5 * u);
 
     // Text: "Zalo" in vibrant Zalo blue
     ctx.fillStyle = '#0084ff';
-    ctx.font = `bold ${Math.max(6, Math.round(2.7 * u))}px "DM Sans", system-ui, sans-serif`;
+    ctx.font = `bold ${Math.max(6, Math.round(2.7 * u))}px "Plus Jakarta Sans", "Inter", system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('Zalo', lx, -22.0 * u);
 
     // Text: "TECHNICAL" in crisp white
     ctx.fillStyle = '#ffffff';
-    ctx.font = `700 ${Math.max(4, Math.round(1.5 * u))}px "DM Sans", system-ui, sans-serif`;
+    ctx.font = `700 ${Math.max(4, Math.round(1.5 * u))}px "Plus Jakarta Sans", "Inter", system-ui, sans-serif`;
     ctx.fillText('TECHNICAL', lx, -19.4 * u);
 
     // Text: "SHARING" in crisp white
-    ctx.font = `600 ${Math.max(4, Math.round(1.4 * u))}px "DM Sans", system-ui, sans-serif`;
+    ctx.font = `600 ${Math.max(4, Math.round(1.4 * u))}px "Plus Jakarta Sans", "Inter", system-ui, sans-serif`;
     ctx.fillText('SHARING', lx, -17.4 * u);
 
     ctx.restore();
