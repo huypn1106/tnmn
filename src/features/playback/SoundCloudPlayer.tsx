@@ -137,12 +137,13 @@ const SoundCloudPlayer = forwardRef<PlayerHandle, Props>(({ url, onReady, onEnd 
   }), [isReady]);
 
   return (
-    <iframe
-      ref={iframeRef}
-      className="absolute opacity-0 pointer-events-none"
-      src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(initialUrl.current)}&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false`}
-      allow="autoplay"
-    />
+    <div className="fixed -top-[9999px] -left-[9999px] pointer-events-none" aria-hidden="true">
+      <iframe
+        ref={iframeRef}
+        src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(initialUrl.current)}&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false`}
+        allow="autoplay; encrypted-media"
+      />
+    </div>
   );
 });
 

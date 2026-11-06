@@ -12,6 +12,7 @@ import { usePlaylists, useTracks, useAllTracks } from '../playlists/usePlaylists
 import { addTrackToPlaylist } from '../playlists/trackActions';
 import { useMediaSession } from './useMediaSession';
 import { useWorkerInterval } from '../../shared/hooks/useWorkerInterval';
+import { useSilentAudio } from '../../shared/hooks/useSilentAudio';
 
 export default function PlayerBar() {
   const { serverId } = useParams<{ serverId: string }>();
@@ -30,6 +31,7 @@ export default function PlayerBar() {
   
   const isDJ = !!user && !!server && server.roles?.[user.uid] === 'dj';
   const { playbackState, emitPlayback } = usePlaybackSync(resolvedId || undefined, isDJ, player);
+  const { resume: resumeSilent, pause: pauseSilent } = useSilentAudio(!!playbackState?.playing);
 
   const { tracks: playlistTracks } = useTracks(resolvedId || undefined, playbackState?.playlistId);
   const { tracks: allServerTracks } = useAllTracks(resolvedId || undefined);
@@ -74,15 +76,32 @@ export default function PlayerBar() {
     const handleInteraction = () => {
       if (player && playbackState?.playing) {
         player.play();
+        resumeSilent();
       }
     };
-    window.addEventListener('pointerdown', handleInteraction);
+    window.addEventListener('pointerdown', handleInteraction, { passive: true });
     window.addEventListener('keydown', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction, { passive: true });
     return () => {
       window.removeEventListener('pointerdown', handleInteraction);
       window.removeEventListener('keydown', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
     };
-  }, [player, playbackState?.playing]);
+  }, [player, playbackState?.playing, resumeSilent]);
+
+  // Wake up player when returning to tab / turning screen on
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && playbackState?.playing && player) {
+        player.play();
+        resumeSilent();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [playbackState?.playing, player, resumeSilent]);
 
   // Dynamic Accent
   useColorThief((playbackState as any)?.thumbnail);
@@ -299,36 +318,47 @@ export default function PlayerBar() {
 
   const handlePlay = useCallback(() => {
     if (!playbackState) return;
-    let resumePos = playbackState.position;
-    if (player) {
-      const cur = player.getCurrentTime();
-      if (cur > 0.5) {
-        resumePos = cur;
+    // Direct call during user gesture (crucial for lock screen controls & mobile browsers)
+    player?.play();
+    resumeSilent();
+
+    if (isDJ) {
+      let resumePos = playbackState.position;
+      if (player) {
+        const cur = player.getCurrentTime();
+        if (cur > 0.5) {
+          resumePos = cur;
+        }
       }
+      emitPlayback({ 
+        playing: true,
+        position: resumePos 
+      });
     }
-    emitPlayback({ 
-      playing: true,
-      position: resumePos 
-    });
-  }, [playbackState, emitPlayback, player]);
+  }, [playbackState, emitPlayback, player, isDJ, resumeSilent]);
 
   const handlePause = useCallback(() => {
     if (!playbackState) return;
-    const now = Date.now();
-    let pausePos = playbackState.playing
-      ? playbackState.position + (now - playbackState.updatedAt) / 1000
-      : playbackState.position;
-    if (player) {
-      const cur = player.getCurrentTime();
-      if (cur > 0.5) {
-        pausePos = cur;
+    player?.pause();
+    pauseSilent();
+
+    if (isDJ) {
+      const now = Date.now();
+      let pausePos = playbackState.playing
+        ? playbackState.position + (now - playbackState.updatedAt) / 1000
+        : playbackState.position;
+      if (player) {
+        const cur = player.getCurrentTime();
+        if (cur > 0.5) {
+          pausePos = cur;
+        }
       }
+      emitPlayback({ 
+        playing: false,
+        position: pausePos 
+      });
     }
-    emitPlayback({ 
-      playing: false,
-      position: pausePos 
-    });
-  }, [playbackState, emitPlayback, player]);
+  }, [playbackState, emitPlayback, player, isDJ, pauseSilent]);
 
   const togglePlay = useCallback(() => {
     if (!playbackState) return;

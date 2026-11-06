@@ -61,8 +61,8 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
 
     const initPlayer = () => {
       playerRef.current = new window.YT.Player(containerRef.current, {
-        height: '1',
-        width: '1',
+        height: '200',
+        width: '200',
         videoId: initialVideoId.current,
         playerVars: {
           autoplay: 0,
@@ -70,6 +70,8 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
           disablekb: 1,
           fs: 0,
           rel: 0,
+          playsinline: 1,
+          origin: typeof window !== 'undefined' ? window.location.origin : undefined,
         },
         events: {
           onReady: () => {
@@ -158,7 +160,7 @@ const YouTubePlayer = forwardRef<PlayerHandle, Props>(({ videoId, onReady, onEnd
   }), [isReady]);
 
   return (
-    <div className="absolute opacity-0 pointer-events-none">
+    <div className="fixed -top-[9999px] -left-[9999px] pointer-events-none" aria-hidden="true">
       <div ref={containerRef} />
     </div>
   );
