@@ -8,6 +8,14 @@ export interface MessageReactionItem {
   username: string;
 }
 
+export interface MessageGif {
+  url: string;
+  previewUrl?: string;
+  title?: string;
+  width?: number;
+  height?: number;
+}
+
 export interface Message {
   id: string;
   text: string;
@@ -27,6 +35,7 @@ export interface Message {
     username: string;
   } | null;
   reactions?: Record<string, MessageReactionItem[]>;
+  gif?: MessageGif | null;
 }
 
 export function useChat(serverId: string | undefined) {
@@ -57,6 +66,7 @@ export function useChat(serverId: string | undefined) {
           ...data,
           username: data.username || data.displayName || 'Unknown',
           reactions: data.reactions || {},
+          gif: data.gif || null,
         };
       }) as Message[];
       
@@ -75,18 +85,25 @@ export function useChat(serverId: string | undefined) {
     }
   };
 
-  const sendMessage = async (text: string, playbackState?: Message['playbackState'], replyTo?: Message['replyTo']) => {
-    if (!user || !serverId || !text.trim()) return;
+  const sendMessage = async (
+    text: string,
+    playbackState?: Message['playbackState'],
+    replyTo?: Message['replyTo'],
+    gif?: MessageGif | null
+  ) => {
+    const trimmedText = text.trim();
+    if (!user || !serverId || (!trimmedText && !gif)) return;
 
     await addDoc(collection(db, 'servers', serverId, 'messages'), {
-      text,
+      text: trimmedText,
       userId: user.uid,
       username: profile?.username || user.displayName || 'Unknown',
       photoURL: user.photoURL,
       createdAt: serverTimestamp(),
       playbackState: playbackState || null,
       replyTo: replyTo || null,
-      reactions: {}
+      reactions: {},
+      gif: gif || null
     });
   };
 

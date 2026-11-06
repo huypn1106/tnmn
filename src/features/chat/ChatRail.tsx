@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useChat, type Message } from './useChat';
+import { useChat, type Message, type MessageGif } from './useChat';
+import GifPicker from './GifPicker';
 import { useAuth } from '../auth/useAuth';
 import { useServer } from '../servers/useServer';
 import { usePlaybackSync } from '../playback/usePlaybackSync';
@@ -35,6 +36,7 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
   const [expandedMsgId, setExpandedMsgId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message['replyTo'] | null>(null);
   const [activeReactPickerMsgId, setActiveReactPickerMsgId] = useState<string | null>(null);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const reactPickerRef = useRef<HTMLDivElement>(null);
 
   // Close reaction picker on click outside
@@ -276,8 +278,25 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
     setReplyingTo(null);
   };
 
+  const handleSelectGif = (gif: MessageGif) => {
+    const currentSong = playbackState ? {
+      title: playbackState.title,
+      thumbnail: playbackState.thumbnail,
+      source: playbackState.source,
+      sourceId: playbackState.sourceId
+    } : null;
+
+    handleScrollToBottom();
+    sendMessage(text, currentSong, replyingTo, gif);
+    setText('');
+    setMentionSearch(null);
+    setReplyingTo(null);
+    setShowGifPicker(false);
+  };
+
   // Check if a message mentions the current user
-  const isCurrentUserMentioned = (msgText: string) => {
+  const isCurrentUserMentioned = (msgText?: string) => {
+    if (!msgText) return false;
     const myUsername = profile?.username || user?.displayName;
     if (!myUsername) return false;
     const myMention = `@${myUsername.toLowerCase()}`;
@@ -286,6 +305,7 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
 
   // Render text content and highlight mentions
   const renderMessageContent = (msgText: string) => {
+    if (!msgText) return null;
     // Regex matching @username (3-20 chars, letters, numbers, underscores)
     const mentionRegex = /@([a-z0-9_]{3,20})/gi;
     const parts = msgText.split(mentionRegex);
@@ -381,7 +401,18 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
                       ? 'bg-accent/10 text-text border-l-2 border-accent shadow-lg shadow-accent/5'
                       : 'bg-bg-3 text-text-2 border-l border-accent/20'
                 }`}>
-                  {renderMessageContent(msg.text)}
+                  {msg.text ? renderMessageContent(msg.text) : null}
+                  {msg.gif && (
+                    <div className={`${msg.text ? 'mt-2' : ''} rounded overflow-hidden max-w-[280px]`}>
+                      <img
+                        src={msg.gif.url || msg.gif.previewUrl}
+                        alt={msg.gif.title || 'GIF'}
+                        loading="lazy"
+                        className="rounded border border-black/10 dark:border-white/10 max-h-56 w-auto object-contain cursor-pointer hover:opacity-95 transition-opacity"
+                        onClick={() => window.open(msg.gif?.url, '_blank')}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Floating Actions Toolbar */}
@@ -416,7 +447,11 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setReplyingTo({ id: msg.id, text: msg.text, username: msg.username });
+                      setReplyingTo({
+                        id: msg.id,
+                        text: msg.text || (msg.gif ? '🖼️ [GIF]' : ''),
+                        username: msg.username,
+                      });
                       inputRef.current?.focus();
                     }}
                     className="p-1 rounded-full text-text-3 hover:text-accent hover:bg-accent/10 transition-all shrink-0"
@@ -634,8 +669,28 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
         </div>
       )}
 
+      {/* Gif Picker Popover */}
+      {showGifPicker && (
+        <GifPicker
+          onSelectGif={handleSelectGif}
+          onClose={() => setShowGifPicker(false)}
+        />
+      )}
+
       {/* Input */}
-      <form onSubmit={handleSend} className={`p-4 border-t border-rule shrink-0 ${replyingTo ? 'bg-bg-3/50' : ''}`}>
+      <form onSubmit={handleSend} className={`p-3 border-t border-rule shrink-0 flex items-center gap-2 ${replyingTo ? 'bg-bg-3/50' : ''}`}>
+        <button
+          type="button"
+          onClick={() => setShowGifPicker((prev) => !prev)}
+          className={`px-2.5 py-2 text-[10px] font-mono font-bold tracking-wider transition-all shrink-0 border ${
+            showGifPicker
+              ? 'bg-accent text-accent-foreground border-accent shadow-xs'
+              : 'bg-bg-3 hover:bg-bg-3/80 text-text-3 hover:text-text border-rule/60'
+          }`}
+          title="Chọn GIF từ GIPHY"
+        >
+          GIF
+        </button>
         <input
           ref={inputRef}
           type="text"
@@ -643,7 +698,7 @@ export default function ChatRail({ onNewMessage }: { onNewMessage?: () => void }
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder="Type a message..."
-          className="w-full bg-bg-3 border-none py-3 px-4 font-chat text-xs text-text outline-none focus:ring-1 ring-accent placeholder:opacity-30"
+          className="flex-1 bg-bg-3 border-none py-2 px-3 font-chat text-xs text-text outline-none focus:ring-1 ring-accent placeholder:opacity-30"
         />
       </form>
     </div>
